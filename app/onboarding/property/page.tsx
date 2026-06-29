@@ -50,12 +50,14 @@ export default function PropertySearch() {
     setError(null);
 
     const supabase = createClient();
-    const { error: insertError } = await supabase
+    const { data, error: insertError } = await supabase
       .from("properties")
       .insert({
         building_id: selected.id,
         unit_number: unitNumber.trim(),
-      });
+      })
+      .select("id")
+      .single();
 
     if (insertError) {
       setSubmitting(false);
@@ -67,7 +69,7 @@ export default function PropertySearch() {
       return;
     }
 
-    router.push("/onboarding/property-created");
+    router.push(`/onboarding/unit?propertyId=${data.id}`);
   }
 
   return (
