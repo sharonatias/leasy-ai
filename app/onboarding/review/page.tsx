@@ -23,20 +23,25 @@ export default function PropertyReview() {
     async function load() {
       const supabase = createClient();
 
-      const [{ data: property }, { data: rental }] = await Promise.all([
-        supabase
-          .from("properties")
-          .select(
-            "building_id, unit_number, bedrooms, bathrooms, floor, size_sqft, view_type, furnishing, condition, availability_date"
-          )
-          .eq("id", propertyId)
-          .single(),
-        supabase
-          .from("rental_terms")
-          .select("asking_price_aed, payment_schedule, security_deposit_aed")
-          .eq("property_id", propertyId)
-          .maybeSingle(),
-      ]);
+      const [{ data: property }, { data: rental }, { data: media }] =
+        await Promise.all([
+          supabase
+            .from("properties")
+            .select(
+              "building_id, unit_number, bedrooms, bathrooms, floor, size_sqft, view_type, furnishing, condition, availability_date"
+            )
+            .eq("id", propertyId)
+            .single(),
+          supabase
+            .from("rental_terms")
+            .select("asking_price_aed, payment_schedule, security_deposit_aed")
+            .eq("property_id", propertyId)
+            .maybeSingle(),
+          supabase
+            .from("media_assets")
+            .select("asset_type")
+            .eq("property_id", propertyId),
+        ]);
 
       const identity =
         property?.building_id != null && property?.unit_number != null;
@@ -59,12 +64,26 @@ export default function PropertyReview() {
         rental.payment_schedule != null &&
         rental.security_deposit_aed != null;
 
+      const requiredMediaTypes = [
+        "living_room",
+        "bedroom",
+        "bathroom",
+        "kitchen",
+        "view",
+        "building_exterior",
+      ];
+      const mediaTypes = new Set(
+        (media ?? []).map((m: { asset_type: string }) => m.asset_type)
+      );
+      const photosComplete =
+        requiredMediaTypes.filter((t) => mediaTypes.has(t)).length >= 4;
+
       setSections([
         { label: "Identity", complete: identity },
         { label: "Unit Details", complete: unitDetails },
         { label: "Property Details", complete: propertyDetails },
         { label: "Rental Terms", complete: rentalTerms },
-        { label: "Photos", complete: false },
+        { label: "Photos", complete: photosComplete },
       ]);
 
       setLoading(false);
@@ -172,9 +191,12 @@ export default function PropertyReview() {
           <h2 className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
             Next Step
           </h2>
-          <div className="w-full rounded-lg bg-zinc-900 px-6 py-3 text-center text-sm font-medium text-white opacity-50 cursor-not-allowed dark:bg-zinc-50 dark:text-zinc-900">
+          <Link
+            href={`/onboarding/media?propertyId=${propertyId}`}
+            className="w-full rounded-lg bg-zinc-900 px-6 py-3 text-center text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
             Next: Upload Photos
-          </div>
+          </Link>
         </div>
       </main>
     </div>
