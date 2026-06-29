@@ -8,13 +8,6 @@
 
 
 -- ============================================================================
--- EXTENSIONS
--- ============================================================================
-
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
-
--- ============================================================================
 -- ENUMS
 -- ============================================================================
 
@@ -183,11 +176,11 @@ CREATE TABLE buildings (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id      UUID         NOT NULL REFERENCES projects(id) ON DELETE RESTRICT,
   name            VARCHAR(200) NOT NULL,
-  developer       VARCHAR(200) NOT NULL,
-  total_floors    INTEGER      NOT NULL CHECK (total_floors > 0),
-  completion_year INTEGER      NOT NULL CHECK (completion_year >= 1900 AND completion_year <= 2035),
-  amenities       TEXT[]       NOT NULL CHECK (array_length(amenities, 1) >= 1),
-  parking         parking_type NOT NULL,
+  developer       VARCHAR(200),
+  total_floors    INTEGER      CHECK (total_floors > 0),
+  completion_year INTEGER      CHECK (completion_year >= 1900),
+  amenities       TEXT[]       CHECK (array_length(amenities, 1) >= 1),
+  parking         parking_type,
   rules           VARCHAR(2000),
   created_at      TIMESTAMPTZ  NOT NULL DEFAULT now(),
   updated_at      TIMESTAMPTZ  NOT NULL DEFAULT now()
@@ -211,14 +204,14 @@ CREATE TABLE properties (
   id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   building_id        UUID            NOT NULL REFERENCES buildings(id) ON DELETE RESTRICT,
   unit_number        VARCHAR(20)     NOT NULL,
-  floor              INTEGER         NOT NULL CHECK (floor >= 0),
-  bedrooms           INTEGER         NOT NULL CHECK (bedrooms >= 0),
-  bathrooms          INTEGER         NOT NULL CHECK (bathrooms >= 1),
-  size_sqft          NUMERIC         NOT NULL CHECK (size_sqft > 0),
-  view_type          view_type       NOT NULL,
-  furnishing         furnishing_type NOT NULL,
-  condition          condition_type  NOT NULL,
-  availability_date  DATE            NOT NULL,
+  floor              INTEGER         CHECK (floor >= 0),
+  bedrooms           INTEGER         CHECK (bedrooms >= 0),
+  bathrooms          INTEGER         CHECK (bathrooms >= 1),
+  size_sqft          NUMERIC         CHECK (size_sqft > 0),
+  view_type          view_type,
+  furnishing         furnishing_type,
+  condition          condition_type,
+  availability_date  DATE,
   unique_features    VARCHAR(1000),
   status             property_status NOT NULL DEFAULT 'draft',
   created_at         TIMESTAMPTZ     NOT NULL DEFAULT now(),
@@ -244,12 +237,12 @@ CREATE TRIGGER properties_updated_at
 CREATE TABLE rental_terms (
   id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   property_id           UUID                  NOT NULL UNIQUE REFERENCES properties(id) ON DELETE CASCADE,
-  asking_price_aed      NUMERIC               NOT NULL CHECK (asking_price_aed > 0),
-  min_lease_term        min_lease_term_type    NOT NULL,
-  payment_schedule      payment_schedule_type  NOT NULL,
-  security_deposit_aed  NUMERIC               NOT NULL CHECK (security_deposit_aed >= 0),
+  asking_price_aed      NUMERIC               CHECK (asking_price_aed > 0),
+  min_lease_term        min_lease_term_type,
+  payment_schedule      payment_schedule_type,
+  security_deposit_aed  NUMERIC               CHECK (security_deposit_aed >= 0),
   included_utilities    TEXT[],
-  pet_policy            pet_policy_type        NOT NULL,
+  pet_policy            pet_policy_type,
   early_termination     VARCHAR(1000),
   rera_permit           VARCHAR(50),
   ejari_registration    VARCHAR(50),
