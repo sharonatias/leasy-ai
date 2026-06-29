@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type Building = {
@@ -11,10 +11,16 @@ type Building = {
 };
 
 export default function PropertySearch() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<Building[]>([]);
   const [selected, setSelected] = useState<Building | null>(null);
+  const [unitNumber, setUnitNumber] = useState("");
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const canContinue = selected !== null && unitNumber.trim().length > 0;
 
   useEffect(() => {
     if (search.length < 2) {
@@ -37,6 +43,33 @@ export default function PropertySearch() {
     return () => clearTimeout(timeout);
   }, [search]);
 
+  async function handleContinue() {
+    if (!selected || !unitNumber.trim()) return;
+
+    setSubmitting(true);
+    setError(null);
+
+    const supabase = createClient();
+    const { error: insertError } = await supabase
+      .from("properties")
+      .insert({
+        building_id: selected.id,
+        unit_number: unitNumber.trim(),
+      });
+
+    if (insertError) {
+      setSubmitting(false);
+      if (insertError.code === "23505") {
+        setError("This unit already exists in this building.");
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
+      return;
+    }
+
+    router.push("/onboarding/property-created");
+  }
+
   return (
     <div className="flex flex-1 items-center justify-center">
       <main className="flex w-full max-w-md flex-col gap-8 px-6">
@@ -57,6 +90,8 @@ export default function PropertySearch() {
             onChange={(e) => {
               setSearch(e.target.value);
               setSelected(null);
+              setUnitNumber("");
+              setError(null);
             }}
             placeholder="Start typing your building name..."
             className="w-full rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder-zinc-400 outline-none transition-colors focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder-zinc-500 dark:focus:border-zinc-500"
@@ -95,7 +130,10 @@ export default function PropertySearch() {
                 <button
                   key={building.id}
                   type="button"
-                  onClick={() => setSelected(building)}
+                  onClick={() => {
+                    setSelected(building);
+                    setError(null);
+                  }}
                   className={`w-full rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
                     selected?.id === building.id
                       ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
@@ -114,22 +152,46 @@ export default function PropertySearch() {
           )}
         </div>
 
-        {selected ? (
-          <Link
-            href="/onboarding/property"
-            className="w-full rounded-lg bg-zinc-900 px-6 py-3 text-center text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            Continue
-          </Link>
-        ) : (
+        {selected && (
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor="unit-number"
+              className="text-sm font-medium text-zinc-900 dark:text-zinc-50"
+            >
+              Unit number
+            </label>
+            <input
+              id="unit-number"
+              type="text"
+              value={unitNumber}
+              onChange={(e) => {
+                setUnitNumber(e.target.value);
+                setError(null);
+              }}
+              placeholder="e.g. 927"
+              className="w-full rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder-zinc-400 outline-none transition-colors focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder-zinc-500 dark:focus:border-zinc-500"
+            />
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2">
           <button
             type="button"
-            disabled
-            className="w-full rounded-lg bg-zinc-900 px-6 py-3 text-sm font-medium text-white opacity-50 cursor-not-allowed dark:bg-zinc-50 dark:text-zinc-900"
+            disabled={!canContinue || submitting}
+            onClick={handleContinue}
+            className={`w-full rounded-lg px-6 py-3 text-sm font-medium transition-colors ${
+              canContinue && !submitting
+                ? "bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 cursor-pointer"
+                : "bg-zinc-900 text-white opacity-50 cursor-not-allowed dark:bg-zinc-50 dark:text-zinc-900"
+            }`}
           >
-            Continue
+            {submitting ? "Creating..." : "Continue"}
           </button>
-        )}
+
+          {error && (
+            <p className="text-center text-sm text-red-500">{error}</p>
+          )}
+        </div>
       </main>
     </div>
   );
