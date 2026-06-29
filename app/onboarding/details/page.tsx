@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -28,6 +28,7 @@ const CONDITION_OPTIONS = [
 ] as const;
 
 export default function PropertyDetails() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const propertyId = searchParams.get("propertyId");
 
@@ -36,7 +37,6 @@ export default function PropertyDetails() {
   const [condition, setCondition] = useState("");
   const [availabilityDate, setAvailabilityDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!propertyId) {
@@ -89,8 +89,7 @@ export default function PropertyDetails() {
       return;
     }
 
-    setSaved(true);
-    setSubmitting(false);
+    router.push(`/onboarding/rental?propertyId=${propertyId}`);
   }
 
   const chipBase =
@@ -185,29 +184,21 @@ export default function PropertyDetails() {
         </div>
 
         <div className="flex flex-col gap-2">
-          {saved ? (
-            <p className="text-center text-sm text-emerald-500">
-              Property details saved. Next step coming soon.
-            </p>
-          ) : (
-            <>
-              <button
-                type="button"
-                disabled={!canContinue || submitting}
-                onClick={handleContinue}
-                className={`w-full rounded-lg px-6 py-3 text-sm font-medium transition-colors ${
-                  canContinue && !submitting
-                    ? "bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 cursor-pointer"
-                    : "bg-zinc-900 text-white opacity-50 cursor-not-allowed dark:bg-zinc-50 dark:text-zinc-900"
-                }`}
-              >
-                {submitting ? "Saving..." : "Continue"}
-              </button>
+          <button
+            type="button"
+            disabled={!canContinue || submitting}
+            onClick={handleContinue}
+            className={`w-full rounded-lg px-6 py-3 text-sm font-medium transition-colors ${
+              canContinue && !submitting
+                ? "bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 cursor-pointer"
+                : "bg-zinc-900 text-white opacity-50 cursor-not-allowed dark:bg-zinc-50 dark:text-zinc-900"
+            }`}
+          >
+            {submitting ? "Saving..." : "Continue"}
+          </button>
 
-              {error && (
-                <p className="text-center text-sm text-red-500">{error}</p>
-              )}
-            </>
+          {error && (
+            <p className="text-center text-sm text-red-500">{error}</p>
           )}
         </div>
       </main>
