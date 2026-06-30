@@ -160,6 +160,9 @@ export default function PropertyReview() {
     if (!listingDraftReady) {
       return { label: "Next: Generate Listing", href: `/onboarding/story?propertyId=${propertyId}` };
     }
+    if (readiness === 100 && listingDraftReady) {
+      return { label: "Export Listing", href: `/onboarding/export?propertyId=${propertyId}` };
+    }
     return null;
   }
 
