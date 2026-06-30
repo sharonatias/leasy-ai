@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type Building = {
@@ -12,6 +12,10 @@ type Building = {
 
 export default function PropertySearch() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const propertyId = searchParams.get("propertyId");
+  const editMode = searchParams.get("edit") === "true";
+
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<Building[]>([]);
   const [selected, setSelected] = useState<Building | null>(null);
@@ -19,12 +23,39 @@ export default function PropertySearch() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [initialLoading, setInitialLoading] = useState(!!propertyId);
 
   const canContinue = selected !== null && unitNumber.trim().length > 0;
 
   useEffect(() => {
+    if (!propertyId) return;
+
+    async function loadExisting() {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("properties")
+        .select("unit_number, building_id, buildings(id, name, developer)")
+        .eq("id", propertyId)
+        .single();
+
+      if (data) {
+        if (data.unit_number) setUnitNumber(data.unit_number);
+        if (data.buildings) {
+          const b = data.buildings as unknown as Building;
+          setSelected(b);
+          setSearch(b.name);
+          setResults([b]);
+        }
+      }
+      setInitialLoading(false);
+    }
+
+    loadExisting();
+  }, [propertyId]);
+
+  useEffect(() => {
     if (search.length < 2) {
-      setResults([]);
+      if (!selected) setResults([]);
       return;
     }
 
@@ -41,7 +72,7 @@ export default function PropertySearch() {
     }, 300);
 
     return () => clearTimeout(timeout);
-  }, [search]);
+  }, [search, selected]);
 
   async function handleContinue() {
     if (!selected || !unitNumber.trim()) return;
@@ -50,6 +81,30 @@ export default function PropertySearch() {
     setError(null);
 
     const supabase = createClient();
+
+    if (editMode && propertyId) {
+      const { error: updateError } = await supabase
+        .from("properties")
+        .update({
+          building_id: selected.id,
+          unit_number: unitNumber.trim(),
+        })
+        .eq("id", propertyId);
+
+      if (updateError) {
+        setSubmitting(false);
+        if (updateError.code === "23505") {
+          setError("This unit already exists in this building.");
+        } else {
+          setError("Something went wrong. Please try again.");
+        }
+        return;
+      }
+
+      router.push(`/onboarding/review?propertyId=${propertyId}`);
+      return;
+    }
+
     const { data, error: insertError } = await supabase
       .from("properties")
       .insert({
@@ -72,12 +127,20 @@ export default function PropertySearch() {
     router.push(`/onboarding/unit?propertyId=${data.id}`);
   }
 
+  if (initialLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-1 items-center justify-center">
       <main className="flex w-full max-w-md flex-col gap-8 px-6">
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Which building is your property in?
+            {editMode ? "Edit property identity" : "Which building is your property in?"}
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             Search for your building. If it&#39;s not in the system yet,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -9,6 +9,7 @@ export default function UnitDetails() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const propertyId = searchParams.get("propertyId");
+  const editMode = searchParams.get("edit") === "true";
 
   const [bedrooms, setBedrooms] = useState("");
   const [bathrooms, setBathrooms] = useState("");
@@ -16,6 +17,30 @@ export default function UnitDetails() {
   const [sizeSqft, setSizeSqft] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(!!propertyId);
+
+  useEffect(() => {
+    if (!propertyId) return;
+
+    async function load() {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("properties")
+        .select("bedrooms, bathrooms, floor, size_sqft")
+        .eq("id", propertyId)
+        .single();
+
+      if (data) {
+        if (data.bedrooms != null) setBedrooms(data.bedrooms.toString());
+        if (data.bathrooms != null) setBathrooms(data.bathrooms.toString());
+        if (data.floor != null) setFloor(data.floor.toString());
+        if (data.size_sqft != null) setSizeSqft(data.size_sqft.toString());
+      }
+      setLoading(false);
+    }
+
+    load();
+  }, [propertyId]);
 
   if (!propertyId) {
     return (
@@ -64,7 +89,19 @@ export default function UnitDetails() {
       return;
     }
 
-    router.push(`/onboarding/details?propertyId=${propertyId}`);
+    if (editMode) {
+      router.push(`/onboarding/review?propertyId=${propertyId}`);
+    } else {
+      router.push(`/onboarding/details?propertyId=${propertyId}`);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading...</p>
+      </div>
+    );
   }
 
   const inputClass =

@@ -107,6 +107,7 @@ export default function PropertyStory() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const propertyId = searchParams.get("propertyId");
+  const editMode = searchParams.get("edit") === "true";
 
   const [draft, setDraft] = useState<ListingDraft | null>(null);
   const [loading, setLoading] = useState(true);

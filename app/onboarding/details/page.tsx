@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -31,6 +31,7 @@ export default function PropertyDetails() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const propertyId = searchParams.get("propertyId");
+  const editMode = searchParams.get("edit") === "true";
 
   const [viewType, setViewType] = useState("");
   const [furnishing, setFurnishing] = useState("");
@@ -38,6 +39,30 @@ export default function PropertyDetails() {
   const [availabilityDate, setAvailabilityDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(!!propertyId);
+
+  useEffect(() => {
+    if (!propertyId) return;
+
+    async function load() {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("properties")
+        .select("view_type, furnishing, condition, availability_date")
+        .eq("id", propertyId)
+        .single();
+
+      if (data) {
+        if (data.view_type) setViewType(data.view_type);
+        if (data.furnishing) setFurnishing(data.furnishing);
+        if (data.condition) setCondition(data.condition);
+        if (data.availability_date) setAvailabilityDate(data.availability_date);
+      }
+      setLoading(false);
+    }
+
+    load();
+  }, [propertyId]);
 
   if (!propertyId) {
     return (
@@ -89,7 +114,19 @@ export default function PropertyDetails() {
       return;
     }
 
-    router.push(`/onboarding/rental?propertyId=${propertyId}`);
+    if (editMode) {
+      router.push(`/onboarding/review?propertyId=${propertyId}`);
+    } else {
+      router.push(`/onboarding/rental?propertyId=${propertyId}`);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading...</p>
+      </div>
+    );
   }
 
   const chipBase =

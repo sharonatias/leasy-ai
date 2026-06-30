@@ -153,6 +153,27 @@ export default function PropertyReview() {
   const allCompleted = [...completedSections, ...extraCompleted];
   const allMissing = [...missingSections, ...extraMissing];
 
+  const editBase = `propertyId=${propertyId}&edit=true`;
+
+  function getEditHref(label: string): string | null {
+    switch (label) {
+      case "Identity":
+        return `/onboarding/property?${editBase}`;
+      case "Unit Details":
+        return `/onboarding/unit?${editBase}`;
+      case "Property Details":
+        return `/onboarding/details?${editBase}`;
+      case "Rental Terms":
+        return `/onboarding/rental?${editBase}`;
+      case "Photos":
+        return `/onboarding/media?${editBase}`;
+      case "Listing Draft":
+        return `/onboarding/story?${editBase}`;
+      default:
+        return null;
+    }
+  }
+
   function getNextStep(): { label: string; href: string } | null {
     if (!photosComplete) {
       return { label: "Next: Upload Photos", href: `/onboarding/media?propertyId=${propertyId}` };
@@ -186,17 +207,30 @@ export default function PropertyReview() {
               Completed
             </h2>
             <div className="flex flex-col gap-2">
-              {allCompleted.map((s) => (
-                <div
-                  key={s.label}
-                  className="flex items-center gap-3 rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-700"
-                >
-                  <span className="text-emerald-500">&#10003;</span>
-                  <span className="text-sm text-zinc-900 dark:text-zinc-50">
-                    {s.label}
-                  </span>
-                </div>
-              ))}
+              {allCompleted.map((s) => {
+                const editHref = getEditHref(s.label);
+                return (
+                  <div
+                    key={s.label}
+                    className="flex items-center justify-between rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-700"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-emerald-500">&#10003;</span>
+                      <span className="text-sm text-zinc-900 dark:text-zinc-50">
+                        {s.label}
+                      </span>
+                    </div>
+                    {editHref && (
+                      <Link
+                        href={editHref}
+                        className="text-xs text-zinc-400 transition-colors hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+                      >
+                        Edit
+                      </Link>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -207,17 +241,30 @@ export default function PropertyReview() {
               Missing
             </h2>
             <div className="flex flex-col gap-2">
-              {allMissing.map((s) => (
-                <div
-                  key={s.label}
-                  className="flex items-center gap-3 rounded-lg border border-dashed border-zinc-200 px-4 py-3 dark:border-zinc-700"
-                >
-                  <span className="text-zinc-300 dark:text-zinc-600">&#9744;</span>
-                  <span className="text-sm text-zinc-400 dark:text-zinc-500">
-                    {s.label}
-                  </span>
-                </div>
-              ))}
+              {allMissing.map((s) => {
+                const editHref = getEditHref(s.label);
+                return (
+                  <div
+                    key={s.label}
+                    className="flex items-center justify-between rounded-lg border border-dashed border-zinc-200 px-4 py-3 dark:border-zinc-700"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-zinc-300 dark:text-zinc-600">&#9744;</span>
+                      <span className="text-sm text-zinc-400 dark:text-zinc-500">
+                        {s.label}
+                      </span>
+                    </div>
+                    {editHref && (
+                      <Link
+                        href={editHref}
+                        className="text-xs text-zinc-400 transition-colors hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+                      >
+                        Edit
+                      </Link>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

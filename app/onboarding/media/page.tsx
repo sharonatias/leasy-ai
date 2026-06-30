@@ -29,6 +29,7 @@ export default function MediaUpload() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const propertyId = searchParams.get("propertyId");
+  const editMode = searchParams.get("edit") === "true";
 
   const [records, setRecords] = useState<Map<string, MediaRecord>>(new Map());
   const [uploading, setUploading] = useState<Set<string>>(new Set());

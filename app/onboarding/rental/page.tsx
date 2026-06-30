@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -17,12 +17,36 @@ export default function RentalTerms() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const propertyId = searchParams.get("propertyId");
+  const editMode = searchParams.get("edit") === "true";
 
   const [askingPrice, setAskingPrice] = useState("");
   const [paymentSchedule, setPaymentSchedule] = useState("");
   const [securityDeposit, setSecurityDeposit] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(!!propertyId);
+
+  useEffect(() => {
+    if (!propertyId) return;
+
+    async function load() {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("rental_terms")
+        .select("asking_price_aed, payment_schedule, security_deposit_aed")
+        .eq("property_id", propertyId)
+        .maybeSingle();
+
+      if (data) {
+        if (data.asking_price_aed != null) setAskingPrice(data.asking_price_aed.toString());
+        if (data.payment_schedule) setPaymentSchedule(data.payment_schedule);
+        if (data.security_deposit_aed != null) setSecurityDeposit(data.security_deposit_aed.toString());
+      }
+      setLoading(false);
+    }
+
+    load();
+  }, [propertyId]);
 
   if (!propertyId) {
     return (
@@ -83,6 +107,14 @@ export default function RentalTerms() {
     }
 
     router.push(`/onboarding/review?propertyId=${propertyId}`);
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-sm text-zinc-400 dark:text-zinc-500">Loading...</p>
+      </div>
+    );
   }
 
   const inputClass =
