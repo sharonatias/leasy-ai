@@ -15,6 +15,8 @@ export default function PropertyReview() {
   const propertyId = searchParams.get("propertyId");
 
   const [sections, setSections] = useState<SectionStatus[]>([]);
+  const [listingDraftReady, setListingDraftReady] = useState(false);
+  const [photosComplete, setPhotosComplete] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,7 +25,7 @@ export default function PropertyReview() {
     async function load() {
       const supabase = createClient();
 
-      const [{ data: property }, { data: rental }, { data: media }] =
+      const [{ data: property }, { data: rental }, { data: media }, { data: listing }] =
         await Promise.all([
           supabase
             .from("properties")
@@ -42,6 +44,13 @@ export default function PropertyReview() {
             .select("asset_type")
             .eq("property_id", propertyId)
             .eq("status", "uploaded"),
+          supabase
+            .from("ai_generated_content")
+            .select("id")
+            .eq("property_id", propertyId)
+            .eq("content_type", "marketing_description")
+            .eq("is_current", true)
+            .maybeSingle(),
         ]);
 
       const identity =
@@ -76,15 +85,18 @@ export default function PropertyReview() {
       const mediaTypes = new Set(
         (media ?? []).map((m: { asset_type: string }) => m.asset_type)
       );
-      const photosComplete =
+      const photosOk =
         requiredMediaTypes.filter((t) => mediaTypes.has(t)).length >= 4;
+
+      setPhotosComplete(photosOk);
+      setListingDraftReady(listing != null);
 
       setSections([
         { label: "Identity", complete: identity },
         { label: "Unit Details", complete: unitDetails },
         { label: "Property Details", complete: propertyDetails },
         { label: "Rental Terms", complete: rentalTerms },
-        { label: "Photos", complete: photosComplete },
+        { label: "Photos", complete: photosOk },
       ]);
 
       setLoading(false);
@@ -128,6 +140,31 @@ export default function PropertyReview() {
     ? Math.round((completedSections.length / sections.length) * 100)
     : 0;
 
+  const extraCompleted: SectionStatus[] = [];
+  const extraMissing: SectionStatus[] = [];
+
+  if (listingDraftReady) {
+    extraCompleted.push({ label: "Listing Draft", complete: true });
+  } else {
+    extraMissing.push({ label: "Listing Draft", complete: false });
+  }
+  extraMissing.push({ label: "AI Review", complete: false });
+
+  const allCompleted = [...completedSections, ...extraCompleted];
+  const allMissing = [...missingSections, ...extraMissing];
+
+  function getNextStep(): { label: string; href: string } | null {
+    if (!photosComplete) {
+      return { label: "Next: Upload Photos", href: `/onboarding/media?propertyId=${propertyId}` };
+    }
+    if (!listingDraftReady) {
+      return { label: "Next: Generate Listing", href: `/onboarding/story?propertyId=${propertyId}` };
+    }
+    return null;
+  }
+
+  const nextStep = getNextStep();
+
   return (
     <div className="flex flex-1 items-center justify-center">
       <main className="flex w-full max-w-md flex-col gap-8 px-6">
@@ -140,13 +177,13 @@ export default function PropertyReview() {
           </p>
         </div>
 
-        {completedSections.length > 0 && (
+        {allCompleted.length > 0 && (
           <div className="flex flex-col gap-3">
             <h2 className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
               Completed
             </h2>
             <div className="flex flex-col gap-2">
-              {completedSections.map((s) => (
+              {allCompleted.map((s) => (
                 <div
                   key={s.label}
                   className="flex items-center gap-3 rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-700"
@@ -161,13 +198,13 @@ export default function PropertyReview() {
           </div>
         )}
 
-        {(missingSections.length > 0 || true) && (
+        {allMissing.length > 0 && (
           <div className="flex flex-col gap-3">
             <h2 className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
               Missing
             </h2>
             <div className="flex flex-col gap-2">
-              {missingSections.map((s) => (
+              {allMissing.map((s) => (
                 <div
                   key={s.label}
                   className="flex items-center gap-3 rounded-lg border border-dashed border-zinc-200 px-4 py-3 dark:border-zinc-700"
@@ -178,27 +215,23 @@ export default function PropertyReview() {
                   </span>
                 </div>
               ))}
-              <div className="flex items-center gap-3 rounded-lg border border-dashed border-zinc-200 px-4 py-3 dark:border-zinc-700">
-                <span className="text-zinc-300 dark:text-zinc-600">&#9744;</span>
-                <span className="text-sm text-zinc-400 dark:text-zinc-500">
-                  AI Review
-                </span>
-              </div>
             </div>
           </div>
         )}
 
-        <div className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-            Next Step
-          </h2>
-          <Link
-            href={`/onboarding/media?propertyId=${propertyId}`}
-            className="w-full rounded-lg bg-zinc-900 px-6 py-3 text-center text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            Next: Upload Photos
-          </Link>
-        </div>
+        {nextStep && (
+          <div className="flex flex-col gap-2">
+            <h2 className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+              Next Step
+            </h2>
+            <Link
+              href={nextStep.href}
+              className="w-full rounded-lg bg-zinc-900 px-6 py-3 text-center text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              {nextStep.label}
+            </Link>
+          </div>
+        )}
       </main>
     </div>
   );
