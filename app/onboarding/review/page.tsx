@@ -40,7 +40,8 @@ export default function PropertyReview() {
           supabase
             .from("media_assets")
             .select("asset_type")
-            .eq("property_id", propertyId),
+            .eq("property_id", propertyId)
+            .eq("status", "uploaded"),
         ]);
 
       const identity =

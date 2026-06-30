@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
 const MEDIA_ITEMS = [
@@ -15,15 +16,25 @@ const MEDIA_ITEMS = [
   { type: "floor_plan", label: "Floor Plan", required: false },
 ] as const;
 
-export default function MediaChecklist() {
+type MediaRecord = {
+  id: string;
+  asset_type: string;
+  url: string;
+  status: string;
+};
+
+const BUCKET = "property-media";
+
+export default function MediaUpload() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const propertyId = searchParams.get("propertyId");
 
-  const [available, setAvailable] = useState<Set<string>>(new Set());
+  const [records, setRecords] = useState<Map<string, MediaRecord>>(new Map());
+  const [uploading, setUploading] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
 
   useEffect(() => {
     if (!propertyId) return;
@@ -32,11 +43,15 @@ export default function MediaChecklist() {
       const supabase = createClient();
       const { data } = await supabase
         .from("media_assets")
-        .select("asset_type")
+        .select("id, asset_type, url, status")
         .eq("property_id", propertyId);
 
       if (data) {
-        setAvailable(new Set(data.map((r) => r.asset_type)));
+        const map = new Map<string, MediaRecord>();
+        for (const row of data) {
+          map.set(row.asset_type, row);
+        }
+        setRecords(map);
       }
       setLoading(false);
     }
@@ -73,57 +88,129 @@ export default function MediaChecklist() {
     );
   }
 
-  function toggle(type: string) {
-    setAvailable((prev) => {
-      const next = new Set(prev);
-      if (next.has(type)) {
-        next.delete(type);
+  async function handleUpload(assetType: string, file: File) {
+    setUploading((prev) => new Set(prev).add(assetType));
+    setError(null);
+
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+    const path = `${propertyId}/${assetType}.${ext}`;
+    const supabase = createClient();
+
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKET)
+      .upload(path, file, { upsert: true });
+
+    if (uploadError) {
+      setUploading((prev) => {
+        const next = new Set(prev);
+        next.delete(assetType);
+        return next;
+      });
+      setError(`Failed to upload ${assetType.replace(/_/g, " ")}. Please try again.`);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from(BUCKET)
+      .getPublicUrl(path);
+
+    const publicUrl = urlData.publicUrl;
+
+    const existing = records.get(assetType);
+
+    let savedRecord: MediaRecord | null = null;
+
+    if (existing && existing.status !== "needs_update") {
+      const { data, error: updateError } = await supabase
+        .from("media_assets")
+        .update({ url: publicUrl, status: "uploaded" })
+        .eq("id", existing.id)
+        .select("id, asset_type, url, status")
+        .single();
+
+      if (updateError) {
+        setError("Failed to save record. Please try again.");
       } else {
-        next.add(type);
+        savedRecord = data;
       }
+    } else {
+      const upsertPayload: Record<string, unknown> = {
+        property_id: propertyId,
+        asset_type: assetType,
+        url: publicUrl,
+        status: "uploaded",
+        sort_order: MEDIA_ITEMS.findIndex((m) => m.type === assetType),
+      };
+      if (existing) {
+        upsertPayload.id = existing.id;
+      }
+
+      const { data, error: upsertError } = await supabase
+        .from("media_assets")
+        .upsert(upsertPayload)
+        .select("id, asset_type, url, status")
+        .single();
+
+      if (upsertError) {
+        setError("Failed to save record. Please try again.");
+      } else {
+        savedRecord = data;
+      }
+    }
+
+    if (savedRecord) {
+      setRecords((prev) => {
+        const next = new Map(prev);
+        next.set(assetType, savedRecord);
+        return next;
+      });
+    }
+
+    setUploading((prev) => {
+      const next = new Set(prev);
+      next.delete(assetType);
       return next;
     });
   }
 
-  async function handleContinue() {
-    setSubmitting(true);
-    setError(null);
+  async function handleDelete(assetType: string) {
+    const record = records.get(assetType);
+    if (!record) return;
 
+    setError(null);
     const supabase = createClient();
 
-    const { error: deleteError } = await supabase
-      .from("media_assets")
-      .delete()
-      .eq("property_id", propertyId);
+    const pathPrefix = `${propertyId}/${assetType}.`;
+    const { data: files } = await supabase.storage
+      .from(BUCKET)
+      .list(propertyId!, { search: assetType });
 
-    if (deleteError) {
-      setSubmitting(false);
-      setError("Something went wrong. Please try again.");
-      return;
-    }
-
-    if (available.size > 0) {
-      const rows = Array.from(available).map((type) => ({
-        property_id: propertyId,
-        asset_type: type,
-        url: "pending-upload",
-        status: "needs_update" as const,
-        sort_order: MEDIA_ITEMS.findIndex((m) => m.type === type),
-      }));
-
-      const { error: insertError } = await supabase
-        .from("media_assets")
-        .insert(rows);
-
-      if (insertError) {
-        setSubmitting(false);
-        setError("Something went wrong. Please try again.");
-        return;
+    if (files) {
+      const toRemove = files
+        .filter((f) => f.name.startsWith(`${assetType}.`))
+        .map((f) => `${propertyId}/${f.name}`);
+      if (toRemove.length > 0) {
+        await supabase.storage.from(BUCKET).remove(toRemove);
       }
     }
 
-    router.push(`/onboarding/review?propertyId=${propertyId}`);
+    await supabase.from("media_assets").delete().eq("id", record.id);
+
+    setRecords((prev) => {
+      const next = new Map(prev);
+      next.delete(assetType);
+      return next;
+    });
   }
+
+  function isUploaded(assetType: string): boolean {
+    const record = records.get(assetType);
+    return record != null && record.status === "uploaded" && record.url !== "pending-upload";
+  }
+
+  const uploadedCount = MEDIA_ITEMS.filter(
+    (item) => item.required && isUploaded(item.type)
+  ).length;
 
   return (
     <div className="flex flex-1 items-center justify-center">
@@ -133,47 +220,103 @@ export default function MediaChecklist() {
             Photos
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Mark which photos you have available. You&#39;ll upload them later.
+            Upload photos of your property. {uploadedCount} of 6 required photos
+            uploaded.
           </p>
         </div>
 
-        <div className="flex flex-col gap-2">
-          {MEDIA_ITEMS.map((item) => (
-            <button
-              key={item.type}
-              type="button"
-              onClick={() => toggle(item.type)}
-              className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
-                available.has(item.type)
-                  ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
-                  : "border-zinc-200 text-zinc-900 hover:border-zinc-400 dark:border-zinc-700 dark:text-zinc-50 dark:hover:border-zinc-500"
-              }`}
-            >
-              <span>
-                {item.label}
-                {!item.required && (
-                  <span className="ml-2 text-xs opacity-60">(optional)</span>
+        <div className="flex flex-col gap-3">
+          {MEDIA_ITEMS.map((item) => {
+            const uploaded = isUploaded(item.type);
+            const record = records.get(item.type);
+            const isUploading = uploading.has(item.type);
+
+            return (
+              <div
+                key={item.type}
+                className={`rounded-lg border px-4 py-3 ${
+                  uploaded
+                    ? "border-zinc-900 dark:border-zinc-50"
+                    : "border-zinc-200 dark:border-zinc-700"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                    {item.label}
+                    {!item.required && (
+                      <span className="ml-2 text-xs font-normal text-zinc-400 dark:text-zinc-500">
+                        (optional)
+                      </span>
+                    )}
+                  </span>
+
+                  <div className="flex items-center gap-2">
+                    {uploaded && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item.type)}
+                        className="text-xs text-red-500 hover:text-red-400 cursor-pointer"
+                      >
+                        Delete
+                      </button>
+                    )}
+
+                    <input
+                      ref={(el) => {
+                        if (el) fileInputRefs.current.set(item.type, el);
+                      }}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleUpload(item.type, file);
+                        e.target.value = "";
+                      }}
+                    />
+                    <button
+                      type="button"
+                      disabled={isUploading}
+                      onClick={() =>
+                        fileInputRefs.current.get(item.type)?.click()
+                      }
+                      className="rounded-md bg-zinc-200 px-3 py-1 text-xs font-medium text-zinc-900 transition-colors hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isUploading
+                        ? "Uploading..."
+                        : uploaded
+                          ? "Replace"
+                          : "Upload"}
+                    </button>
+                  </div>
+                </div>
+
+                {uploaded && record && (
+                  <div className="mt-3">
+                    <Image
+                      src={record.url}
+                      alt={item.label}
+                      width={400}
+                      height={200}
+                      className="h-32 w-full rounded-md object-cover"
+                      unoptimized
+                    />
+                  </div>
                 )}
-              </span>
-              <span className="text-xs">
-                {available.has(item.type) ? "Available" : "Missing"}
-              </span>
-            </button>
-          ))}
+              </div>
+            );
+          })}
         </div>
 
         <div className="flex flex-col gap-2">
           <button
             type="button"
-            disabled={submitting}
-            onClick={handleContinue}
-            className={`w-full rounded-lg px-6 py-3 text-sm font-medium transition-colors ${
-              !submitting
-                ? "bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 cursor-pointer"
-                : "bg-zinc-900 text-white opacity-50 cursor-not-allowed dark:bg-zinc-50 dark:text-zinc-900"
-            }`}
+            onClick={() =>
+              router.push(`/onboarding/review?propertyId=${propertyId}`)
+            }
+            className="w-full rounded-lg bg-zinc-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 cursor-pointer"
           >
-            {submitting ? "Saving..." : "Continue"}
+            Continue to Review
           </button>
 
           {error && (
