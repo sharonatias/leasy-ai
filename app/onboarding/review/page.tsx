@@ -230,12 +230,48 @@ export default function PropertyReview() {
     return { viewingDate, message };
   }
 
-  const statusStyles: Record<string, string> = {
-    new: "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
-    active: "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400",
-    qualified: "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
-    not_qualified: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
+  const statusOptions = [
+    { value: "new", label: "New" },
+    { value: "active", label: "Contacted" },
+    { value: "qualified", label: "Qualified" },
+    { value: "closed", label: "Not interested" },
+  ] as const;
+
+  const statusStyles: Record<string, { badge: string; active: string }> = {
+    new: {
+      badge: "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
+      active: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-800",
+    },
+    active: {
+      badge: "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400",
+      active: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-400 dark:border-amber-800",
+    },
+    qualified: {
+      badge: "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
+      active: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400 dark:border-emerald-800",
+    },
+    closed: {
+      badge: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
+      active: "bg-zinc-200 text-zinc-600 border-zinc-300 dark:bg-zinc-700 dark:text-zinc-300 dark:border-zinc-600",
+    },
   };
+
+  async function updateLeadStatus(inquiryId: string, newStatus: string) {
+    const previous = inquiries.find((inq) => inq.id === inquiryId)?.status;
+    setInquiries((prev) =>
+      prev.map((inq) => (inq.id === inquiryId ? { ...inq, status: newStatus } : inq))
+    );
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("tenant_inquiries")
+      .update({ status: newStatus })
+      .eq("id", inquiryId);
+    if (error && previous) {
+      setInquiries((prev) =>
+        prev.map((inq) => (inq.id === inquiryId ? { ...inq, status: previous } : inq))
+      );
+    }
+  }
 
   const nextStep = getNextStep();
 
@@ -366,6 +402,7 @@ export default function PropertyReview() {
             <div className="flex flex-col gap-2">
               {inquiries.map((inq) => {
                 const { viewingDate, message } = parseConversationSummary(inq.conversation_summary);
+                const styles = statusStyles[inq.status] ?? statusStyles.new;
                 return (
                   <div
                     key={inq.id}
@@ -382,14 +419,9 @@ export default function PropertyReview() {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusStyles[inq.status] ?? statusStyles.new}`}>
-                          {inq.status.replace(/_/g, " ")}
-                        </span>
-                        <span className="text-[11px] text-zinc-300 dark:text-zinc-600">
-                          {timeAgo(inq.created_at)}
-                        </span>
-                      </div>
+                      <span className="text-[11px] text-zinc-300 dark:text-zinc-600">
+                        {timeAgo(inq.created_at)}
+                      </span>
                     </div>
                     {(viewingDate || message) && (
                       <div className="mt-2 flex flex-col gap-1 border-t border-zinc-100 pt-2 dark:border-zinc-800">
@@ -411,6 +443,22 @@ export default function PropertyReview() {
                         )}
                       </div>
                     )}
+                    <div className="mt-2.5 flex gap-1.5 border-t border-zinc-100 pt-2.5 dark:border-zinc-800">
+                      {statusOptions.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => updateLeadStatus(inq.id, opt.value)}
+                          className={`rounded-md border px-2 py-1 text-[10px] font-semibold transition-colors ${
+                            inq.status === opt.value
+                              ? styles.active
+                              : "border-zinc-200 text-zinc-400 hover:border-zinc-300 hover:text-zinc-600 dark:border-zinc-700 dark:text-zinc-500 dark:hover:border-zinc-600 dark:hover:text-zinc-300"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 );
               })}
