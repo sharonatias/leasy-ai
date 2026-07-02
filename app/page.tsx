@@ -174,6 +174,7 @@ export default async function Home() {
               <Link
                 key={card.id}
                 href={`/onboarding/review?propertyId=${card.id}`}
+                data-testid="property-card"
                 className="group flex flex-col gap-3 rounded-lg border border-zinc-200 px-5 py-4 transition-colors hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-500"
               >
                 <div className="flex items-start justify-between">

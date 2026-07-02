@@ -498,7 +498,7 @@ export default function PropertyReview() {
 
         {/* ── Publish / Share ── */}
         {propertyStatus === "listed" ? (
-          <div className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-900/20">
+          <div data-testid="publish-section" className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-900/20">
             <div className="flex items-center gap-2">
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] text-white">✓</span>
               <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Published</span>
@@ -546,7 +546,7 @@ export default function PropertyReview() {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div data-testid="publish-section" className="flex flex-col gap-2">
             <button
               type="button"
               onClick={handlePublish}
@@ -570,7 +570,7 @@ export default function PropertyReview() {
         )}
 
         {/* ── Leads Inbox ── */}
-        <div className="flex flex-col gap-3">
+        <div data-testid="leads-section" className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
               Leads

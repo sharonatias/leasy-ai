@@ -488,6 +488,7 @@ export default function PropertyShowcase() {
                 </div>
                 <button
                   type="button"
+                  data-testid="request-viewing-btn"
                   onClick={() => setShowModal(true)}
                   className="mt-5 w-full rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 px-5 py-3 text-[14px] font-semibold text-white shadow-md shadow-amber-700/15 transition-all hover:from-amber-500 hover:to-amber-400 hover:shadow-lg hover:shadow-amber-600/20"
                 >
@@ -502,7 +503,7 @@ export default function PropertyShowcase() {
       {/* ── VIEWING REQUEST MODAL ── */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="relative mx-4 w-full max-w-md rounded-2xl bg-white px-7 py-8 shadow-2xl dark:bg-zinc-900">
+          <div data-testid="viewing-modal" className="relative mx-4 w-full max-w-md rounded-2xl bg-white px-7 py-8 shadow-2xl dark:bg-zinc-900">
             {/* Close button */}
             <button
               type="button"
@@ -515,7 +516,7 @@ export default function PropertyShowcase() {
             </button>
 
             {submitStatus === "success" ? (
-              <div className="flex flex-col items-center py-8 text-center">
+              <div data-testid="success-message" className="flex flex-col items-center py-8 text-center">
                 <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-50 dark:bg-green-900/30">
                   <svg className="h-7 w-7 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M20 6L9 17l-5-5" />
