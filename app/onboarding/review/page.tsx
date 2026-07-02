@@ -19,6 +19,14 @@ type Inquiry = {
   created_at: string;
 };
 
+type Viewing = {
+  id: string;
+  inquiry_id: string;
+  scheduled_date: string;
+  scheduled_time: string;
+  status: string;
+};
+
 export default function PropertyReview() {
   const searchParams = useSearchParams();
   const propertyId = searchParams.get("propertyId");
@@ -27,6 +35,14 @@ export default function PropertyReview() {
   const [listingDraftReady, setListingDraftReady] = useState(false);
   const [photosComplete, setPhotosComplete] = useState(false);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [viewings, setViewings] = useState<Viewing[]>([]);
+  const [bookingInquiry, setBookingInquiry] = useState<Inquiry | null>(null);
+  const [bookingForm, setBookingForm] = useState({ date: "", time: "" });
+  const [bookingStatus, setBookingStatus] = useState<"idle" | "saving" | "error">("idle");
+  const [bookingError, setBookingError] = useState("");
+  const [propertyStatus, setPropertyStatus] = useState<string>("draft");
+  const [publishStatus, setPublishStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
+  const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,12 +51,12 @@ export default function PropertyReview() {
     async function load() {
       const supabase = createClient();
 
-      const [{ data: property }, { data: rental }, { data: media }, { data: listing }, { data: leads }] =
+      const [{ data: property }, { data: rental }, { data: media }, { data: listing }, { data: leads }, { data: viewingRows }] =
         await Promise.all([
           supabase
             .from("properties")
             .select(
-              "building_id, unit_number, bedrooms, bathrooms, floor, size_sqft, view_type, furnishing, condition, availability_date"
+              "building_id, unit_number, bedrooms, bathrooms, floor, size_sqft, view_type, furnishing, condition, availability_date, status"
             )
             .eq("id", propertyId)
             .single(),
@@ -67,6 +83,11 @@ export default function PropertyReview() {
             .eq("property_id", propertyId)
             .order("created_at", { ascending: false })
             .limit(10),
+          supabase
+            .from("viewings")
+            .select("id, inquiry_id, scheduled_date, scheduled_time, status")
+            .eq("property_id", propertyId)
+            .in("status", ["proposed", "confirmed"]),
         ]);
 
       const identity =
@@ -106,7 +127,9 @@ export default function PropertyReview() {
 
       setPhotosComplete(photosOk);
       setListingDraftReady(listing != null);
+      setPropertyStatus(property?.status ?? "draft");
       setInquiries((leads ?? []) as Inquiry[]);
+      setViewings((viewingRows ?? []) as Viewing[]);
 
       setSections([
         { label: "Identity", complete: identity },
@@ -254,7 +277,111 @@ export default function PropertyReview() {
       badge: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
       active: "bg-zinc-200 text-zinc-600 border-zinc-300 dark:bg-zinc-700 dark:text-zinc-300 dark:border-zinc-600",
     },
+    viewing_booked: {
+      badge: "bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400",
+      active: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/40 dark:text-purple-400 dark:border-purple-800",
+    },
   };
+
+  function formatViewingDate(dateStr: string): string {
+    const d = new Date(dateStr + "T00:00:00");
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  function formatViewingTime(timeStr: string): string {
+    const [h, m] = timeStr.split(":");
+    const hour = parseInt(h, 10);
+    const suffix = hour >= 12 ? "PM" : "AM";
+    const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    return `${h12}:${m} ${suffix}`;
+  }
+
+  const publicUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/property/${propertyId}`
+    : `/property/${propertyId}`;
+
+  async function handlePublish() {
+    setPublishStatus("saving");
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("properties")
+      .update({ status: "listed" })
+      .eq("id", propertyId);
+    if (error) {
+      setPublishStatus("error");
+      return;
+    }
+    setPropertyStatus("listed");
+    setPublishStatus("success");
+  }
+
+  async function handleCopyLink() {
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard not available */ }
+  }
+
+  async function handleBookViewing() {
+    if (!bookingInquiry || !bookingForm.date || !bookingForm.time || !propertyId) return;
+    setBookingStatus("saving");
+    setBookingError("");
+
+    const supabase = createClient();
+    const { error: viewingError } = await supabase.from("viewings").insert({
+      inquiry_id: bookingInquiry.id,
+      property_id: propertyId,
+      scheduled_date: bookingForm.date,
+      scheduled_time: bookingForm.time,
+      status: "confirmed",
+      tenant_name: bookingInquiry.tenant_name ?? "Unknown",
+      tenant_phone: bookingInquiry.tenant_phone,
+    });
+
+    if (viewingError) {
+      setBookingStatus("error");
+      if (viewingError.code === "23505") {
+        if (viewingError.message.includes("inquiry_id")) {
+          setBookingError("This lead already has a viewing booked.");
+        } else {
+          setBookingError("A viewing is already scheduled at this date and time.");
+        }
+      } else {
+        setBookingError("Something went wrong. Please try again.");
+      }
+      return;
+    }
+
+    const { error: statusError } = await supabase
+      .from("tenant_inquiries")
+      .update({ status: "viewing_booked" })
+      .eq("id", bookingInquiry.id);
+
+    if (statusError) {
+      setBookingStatus("error");
+      setBookingError("Viewing created but failed to update lead status.");
+      return;
+    }
+
+    setInquiries((prev) =>
+      prev.map((inq) => (inq.id === bookingInquiry.id ? { ...inq, status: "viewing_booked" } : inq))
+    );
+    setViewings((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        inquiry_id: bookingInquiry.id,
+        scheduled_date: bookingForm.date,
+        scheduled_time: bookingForm.time,
+        status: "confirmed",
+      },
+    ]);
+
+    setBookingInquiry(null);
+    setBookingForm({ date: "", time: "" });
+    setBookingStatus("idle");
+  }
 
   async function updateLeadStatus(inquiryId: string, newStatus: string) {
     const previous = inquiries.find((inq) => inq.id === inquiryId)?.status;
@@ -369,12 +496,78 @@ export default function PropertyReview() {
           </div>
         )}
 
-        <Link
-          href={`/property/${propertyId}`}
-          className="w-full rounded-lg border border-zinc-200 px-6 py-3 text-center text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800"
-        >
-          Preview Property
-        </Link>
+        {/* ── Publish / Share ── */}
+        {propertyStatus === "listed" ? (
+          <div className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-900/20">
+            <div className="flex items-center gap-2">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] text-white">✓</span>
+              <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Published</span>
+            </div>
+
+            <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Public Link</p>
+              <p className="mt-0.5 truncate text-xs text-zinc-700 dark:text-zinc-300">{publicUrl}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="flex items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                {copied ? "Copied!" : "Copy Link"}
+              </button>
+              <a
+                href={publicUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+                Open
+              </a>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(publicUrl)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50"
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 0 0 .613.613l4.458-1.495A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.359 0-4.559-.678-6.42-1.847l-.447-.283-3.108 1.041 1.041-3.108-.283-.447A9.955 9.955 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                WhatsApp
+              </a>
+              <a
+                href={`mailto:?subject=${encodeURIComponent("Property for Rent")}&body=${encodeURIComponent(publicUrl)}`}
+                className="flex items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
+                Email
+              </a>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={handlePublish}
+              disabled={publishStatus === "saving"}
+              className="w-full rounded-lg bg-emerald-600 px-6 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {publishStatus === "saving" ? "Publishing…" : "Publish Property"}
+            </button>
+            {publishStatus === "error" && (
+              <p className="text-xs text-red-500">Something went wrong. Please try again.</p>
+            )}
+            <a
+              href={publicUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full rounded-lg border border-zinc-200 px-6 py-3 text-center text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800"
+            >
+              Preview Property
+            </a>
+          </div>
+        )}
 
         {/* ── Leads Inbox ── */}
         <div className="flex flex-col gap-3">
@@ -403,6 +596,7 @@ export default function PropertyReview() {
               {inquiries.map((inq) => {
                 const { viewingDate, message } = parseConversationSummary(inq.conversation_summary);
                 const styles = statusStyles[inq.status] ?? statusStyles.new;
+                const viewing = viewings.find((v) => v.inquiry_id === inq.id);
                 return (
                   <div
                     key={inq.id}
@@ -443,6 +637,32 @@ export default function PropertyReview() {
                         )}
                       </div>
                     )}
+
+                    {/* Viewing info or Book Viewing button */}
+                    {viewing ? (
+                      <div className="mt-2 flex items-center gap-1.5 rounded-md bg-purple-50 px-3 py-2 dark:bg-purple-900/20">
+                        <svg className="h-3.5 w-3.5 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="4" width="18" height="18" rx="2" />
+                          <path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" />
+                        </svg>
+                        <span className="text-xs font-medium text-purple-700 dark:text-purple-400">
+                          Viewing booked: {formatViewingDate(viewing.scheduled_date)} at {formatViewingTime(viewing.scheduled_time)}
+                        </span>
+                      </div>
+                    ) : inq.status === "qualified" ? (
+                      <button
+                        type="button"
+                        onClick={() => { setBookingInquiry(inq); setBookingForm({ date: "", time: "" }); setBookingStatus("idle"); setBookingError(""); }}
+                        className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border border-purple-200 px-3 py-2 text-xs font-semibold text-purple-600 transition-colors hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-900/20"
+                      >
+                        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="4" width="18" height="18" rx="2" />
+                          <path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" />
+                        </svg>
+                        Book Viewing
+                      </button>
+                    ) : null}
+
                     <div className="mt-2.5 flex gap-1.5 border-t border-zinc-100 pt-2.5 dark:border-zinc-800">
                       {statusOptions.map((opt) => (
                         <button
@@ -458,6 +678,11 @@ export default function PropertyReview() {
                           {opt.label}
                         </button>
                       ))}
+                      {inq.status === "viewing_booked" && (
+                        <span className={`rounded-md border px-2 py-1 text-[10px] font-semibold ${statusStyles.viewing_booked.active}`}>
+                          Viewing Booked
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
@@ -466,6 +691,67 @@ export default function PropertyReview() {
           )}
         </div>
       </main>
+
+      {/* Booking Modal */}
+      {bookingInquiry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl dark:bg-zinc-900">
+            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+              Book Viewing
+            </h3>
+            <p className="mt-1 text-xs text-zinc-400">
+              {bookingInquiry.tenant_name} &middot; {bookingInquiry.tenant_phone}
+            </p>
+
+            <div className="mt-4 flex flex-col gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                  Date *
+                </label>
+                <input
+                  type="date"
+                  value={bookingForm.date}
+                  onChange={(e) => setBookingForm((f) => ({ ...f, date: e.target.value }))}
+                  className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 outline-none focus:border-purple-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                  Time *
+                </label>
+                <input
+                  type="time"
+                  value={bookingForm.time}
+                  onChange={(e) => setBookingForm((f) => ({ ...f, time: e.target.value }))}
+                  className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 outline-none focus:border-purple-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                />
+              </div>
+            </div>
+
+            {bookingError && (
+              <p className="mt-3 text-xs text-red-500">{bookingError}</p>
+            )}
+
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setBookingInquiry(null); setBookingError(""); }}
+                className="flex-1 rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!bookingForm.date || !bookingForm.time || bookingStatus === "saving"}
+                onClick={handleBookViewing}
+                className="flex-1 rounded-lg bg-purple-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-700 disabled:opacity-50"
+              >
+                {bookingStatus === "saving" ? "Saving…" : "Confirm Booking"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
