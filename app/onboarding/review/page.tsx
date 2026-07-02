@@ -282,6 +282,13 @@ export default function PropertyReview() {
             </Link>
           </div>
         )}
+
+        <Link
+          href={`/property/${propertyId}`}
+          className="w-full rounded-lg border border-zinc-200 px-6 py-3 text-center text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800"
+        >
+          Preview Property
+        </Link>
       </main>
     </div>
   );
