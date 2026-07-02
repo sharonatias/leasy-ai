@@ -66,6 +66,10 @@ export default function PropertyShowcase() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [fadeKey, setFadeKey] = useState(0);
   const [showMore, setShowMore] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [submitError, setSubmitError] = useState("");
+  const [form, setForm] = useState({ name: "", phone: "", date: "", message: "" });
 
   useEffect(() => {
     if (!propertyId) return;
@@ -122,6 +126,40 @@ export default function PropertyShowcase() {
 
     load();
   }, [propertyId]);
+
+  async function handleSubmitInquiry() {
+    if (!form.name.trim() || !form.phone.trim()) return;
+    setSubmitStatus("submitting");
+    setSubmitError("");
+
+    const summaryParts: string[] = [];
+    if (form.date) summaryParts.push(`Preferred viewing date: ${form.date}`);
+    if (form.message.trim()) summaryParts.push(`Message: ${form.message.trim()}`);
+
+    const supabase = createClient();
+    const { error } = await supabase.from("tenant_inquiries").insert({
+      property_id: propertyId,
+      channel: "web_chat",
+      tenant_name: form.name.trim(),
+      tenant_phone: form.phone.trim(),
+      status: "new",
+      qualification_result: "pending",
+      conversation_summary: summaryParts.length > 0 ? summaryParts.join("\n") : null,
+    });
+
+    if (error) {
+      setSubmitStatus("error");
+      setSubmitError("Something went wrong. Please try again.");
+      return;
+    }
+
+    setSubmitStatus("success");
+    setTimeout(() => {
+      setShowModal(false);
+      setSubmitStatus("idle");
+      setForm({ name: "", phone: "", date: "", message: "" });
+    }, 3000);
+  }
 
   function goTo(index: number) {
     setActiveIndex(index);
@@ -450,6 +488,7 @@ export default function PropertyShowcase() {
                 </div>
                 <button
                   type="button"
+                  onClick={() => setShowModal(true)}
                   className="mt-5 w-full rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 px-5 py-3 text-[14px] font-semibold text-white shadow-md shadow-amber-700/15 transition-all hover:from-amber-500 hover:to-amber-400 hover:shadow-lg hover:shadow-amber-600/20"
                 >
                   Request a Viewing
@@ -459,6 +498,115 @@ export default function PropertyShowcase() {
           </div>
         </div>
       </div>
+
+      {/* ── VIEWING REQUEST MODAL ── */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="relative mx-4 w-full max-w-md rounded-2xl bg-white px-7 py-8 shadow-2xl dark:bg-zinc-900">
+            {/* Close button */}
+            <button
+              type="button"
+              onClick={() => { setShowModal(false); setSubmitStatus("idle"); setSubmitError(""); }}
+              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6L6 18" /><path d="M6 6l12 12" />
+              </svg>
+            </button>
+
+            {submitStatus === "success" ? (
+              <div className="flex flex-col items-center py-8 text-center">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-50 dark:bg-green-900/30">
+                  <svg className="h-7 w-7 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                </div>
+                <p className="text-[18px] font-semibold text-[#141425] dark:text-zinc-100">
+                  Request received
+                </p>
+                <p className="mt-2 text-[14px] leading-relaxed text-zinc-500 dark:text-zinc-400">
+                  Thanks — we received your request and will contact you shortly.
+                </p>
+              </div>
+            ) : (
+              <>
+                <h3 className="text-[22px] font-bold text-[#141425] dark:text-zinc-100">
+                  Request a Viewing
+                </h3>
+                <p className="mt-1.5 text-[14px] text-zinc-400 dark:text-zinc-500">
+                  {buildingName} · Unit {p.unit_number}
+                </p>
+
+                <div className="mt-6 flex flex-col gap-4">
+                  <div>
+                    <label className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400">
+                      Full name <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      placeholder="e.g. John Smith"
+                      className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3 text-[15px] text-[#141425] outline-none transition-colors placeholder:text-zinc-300 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-100 dark:placeholder:text-zinc-600 dark:focus:border-amber-500/50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400">
+                      WhatsApp / Phone <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      value={form.phone}
+                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                      placeholder="e.g. +971 50 123 4567"
+                      className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3 text-[15px] text-[#141425] outline-none transition-colors placeholder:text-zinc-300 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-100 dark:placeholder:text-zinc-600 dark:focus:border-amber-500/50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400">
+                      Preferred viewing date
+                    </label>
+                    <input
+                      type="date"
+                      value={form.date}
+                      onChange={(e) => setForm({ ...form, date: e.target.value })}
+                      className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3 text-[15px] text-[#141425] outline-none transition-colors focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-100 dark:focus:border-amber-500/50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400">
+                      Message <span className="text-[11px] font-normal normal-case tracking-normal text-zinc-300 dark:text-zinc-600">(optional)</span>
+                    </label>
+                    <textarea
+                      value={form.message}
+                      onChange={(e) => setForm({ ...form, message: e.target.value })}
+                      rows={3}
+                      placeholder="Any questions or preferences..."
+                      className="w-full resize-none rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3 text-[15px] text-[#141425] outline-none transition-colors placeholder:text-zinc-300 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-100 dark:placeholder:text-zinc-600 dark:focus:border-amber-500/50"
+                    />
+                  </div>
+                </div>
+
+                {submitError && (
+                  <p className="mt-3 text-[13px] text-red-500">{submitError}</p>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleSubmitInquiry}
+                  disabled={!form.name.trim() || !form.phone.trim() || submitStatus === "submitting"}
+                  className="mt-6 w-full rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 px-5 py-3.5 text-[15px] font-semibold text-white shadow-md shadow-amber-700/15 transition-all hover:from-amber-500 hover:to-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {submitStatus === "submitting" ? "Submitting..." : "Submit Request"}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
