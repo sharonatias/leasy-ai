@@ -89,7 +89,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       : `${buildingName} Unit ${unit} — Available for rent in Dubai.`;
   }
 
-  const heroImage = (media ?? []).length > 0 ? (media as { url: string }[])[0].url : null;
+  let heroImage: string | null = null;
+  if ((media ?? []).length > 0) {
+    const raw = (media as { url: string }[])[0].url;
+    heroImage = raw.replace(
+      "/storage/v1/object/public/",
+      "/storage/v1/render/image/public/"
+    ) + "?width=1200&height=630&resize=cover";
+  }
 
   const canonicalUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://leasy.ai"}/property/${propertyId}`;
 
