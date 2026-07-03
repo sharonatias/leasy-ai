@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { PropertyCardList } from "./property-card-list";
 
 type PropertyRow = {
   id: string;
@@ -13,6 +14,7 @@ type PropertyRow = {
   condition: string | null;
   availability_date: string | null;
   building_id: string | null;
+  status: string;
   updated_at: string;
   buildings: { name: string } | null;
 };
@@ -105,7 +107,7 @@ export default async function Home() {
   const { data: properties } = await supabase
     .from("properties")
     .select(
-      "id, unit_number, bedrooms, bathrooms, floor, size_sqft, view_type, furnishing, condition, availability_date, building_id, updated_at, buildings(name)"
+      "id, unit_number, bedrooms, bathrooms, floor, size_sqft, view_type, furnishing, condition, availability_date, building_id, status, updated_at, buildings(name)"
     )
     .order("updated_at", { ascending: false });
 
@@ -150,6 +152,7 @@ export default async function Home() {
       unitNumber: property.unit_number,
       readiness,
       status,
+      propertyStatus: property.status,
       updatedAt: formatTimeAgo(property.updated_at),
     };
   });
@@ -168,67 +171,7 @@ export default async function Home() {
           </p>
         </div>
 
-        {cards.length > 0 && (
-          <div className="flex flex-col gap-3">
-            {cards.map((card) => (
-              <Link
-                key={card.id}
-                href={`/onboarding/review?propertyId=${card.id}`}
-                data-testid="property-card"
-                className="group flex flex-col gap-3 rounded-lg border border-zinc-200 px-5 py-4 transition-colors hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-500"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                      {card.buildingName}
-                    </span>
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                      Unit {card.unitNumber}
-                    </span>
-                  </div>
-                  <span className="text-xs font-medium text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300">
-                    Continue →
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="flex flex-1 items-center gap-2">
-                    <div className="h-1.5 flex-1 rounded-full bg-zinc-100 dark:bg-zinc-800">
-                      <div
-                        className={`h-1.5 rounded-full transition-all ${
-                          card.readiness === 100
-                            ? "bg-emerald-500"
-                            : "bg-zinc-900 dark:bg-zinc-50"
-                        }`}
-                        style={{ width: `${card.readiness}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                      {card.readiness}%
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`text-xs font-medium ${
-                      card.status === "Ready"
-                        ? "text-emerald-500"
-                        : card.status === "In progress"
-                          ? "text-amber-500"
-                          : "text-zinc-400 dark:text-zinc-500"
-                    }`}
-                  >
-                    {card.status}
-                  </span>
-                  <span className="text-xs text-zinc-400 dark:text-zinc-500">
-                    {card.updatedAt}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+        {cards.length > 0 && <PropertyCardList initialCards={cards} />}
 
         <Link
           href="/onboarding"
