@@ -241,7 +241,7 @@ export default function PropertyShowcase() {
               <Image
                 key={fadeKey}
                 src={heroUrl}
-                alt={photos[activeIndex]?.asset_type.replace(/_/g, " ") ?? buildingName}
+                alt={`${buildingName} Unit ${p.unit_number} — ${photos[activeIndex]?.asset_type.replace(/_/g, " ") ?? "photo"}`}
                 fill
                 className="object-cover transition-opacity duration-300"
                 unoptimized
@@ -259,7 +259,8 @@ export default function PropertyShowcase() {
                 <button
                   type="button"
                   onClick={prev}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/60 text-zinc-600 shadow-lg shadow-black/8 backdrop-blur-md transition-all hover:bg-white/85 hover:scale-105 dark:bg-zinc-800/50 dark:text-zinc-300 dark:hover:bg-zinc-800/70"
+                  aria-label="Previous photo"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full bg-white/60 text-zinc-600 shadow-lg shadow-black/8 backdrop-blur-md transition-all hover:bg-white/85 hover:scale-105 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none dark:bg-zinc-800/50 dark:text-zinc-300 dark:hover:bg-zinc-800/70"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M15 18l-6-6 6-6" />
@@ -268,7 +269,8 @@ export default function PropertyShowcase() {
                 <button
                   type="button"
                   onClick={next}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/60 text-zinc-600 shadow-lg shadow-black/8 backdrop-blur-md transition-all hover:bg-white/85 hover:scale-105 dark:bg-zinc-800/50 dark:text-zinc-300 dark:hover:bg-zinc-800/70"
+                  aria-label="Next photo"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full bg-white/60 text-zinc-600 shadow-lg shadow-black/8 backdrop-blur-md transition-all hover:bg-white/85 hover:scale-105 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none dark:bg-zinc-800/50 dark:text-zinc-300 dark:hover:bg-zinc-800/70"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M9 18l6-6-6-6" />
@@ -278,7 +280,7 @@ export default function PropertyShowcase() {
             )}
 
             {photos.length > 1 && (
-              <div className="absolute bottom-4 right-4 rounded-full bg-black/30 px-3.5 py-1.5 backdrop-blur-md">
+              <div className="absolute bottom-4 right-4 rounded-full bg-black/30 px-3.5 py-1.5 backdrop-blur-md" aria-label={`Photo ${activeIndex + 1} of ${photos.length}`} role="status">
                 <span className="text-[11px] font-medium tracking-wide text-white/90">
                   {activeIndex + 1} / {photos.length}
                 </span>
@@ -294,7 +296,9 @@ export default function PropertyShowcase() {
                   key={photo.asset_type}
                   type="button"
                   onClick={() => goTo(i)}
-                  className={`group relative flex-1 overflow-hidden rounded-lg transition-all duration-200 ${
+                  aria-label={`View ${photo.asset_type.replace(/_/g, " ")} photo`}
+                  aria-current={activeIndex === i ? "true" : undefined}
+                  className={`group relative flex-1 overflow-hidden rounded-lg transition-all duration-200 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none ${
                     activeIndex === i
                       ? "ring-2 ring-amber-600/80 ring-offset-2 ring-offset-[#faf9f7] dark:ring-amber-500 dark:ring-offset-zinc-950"
                       : "opacity-50 hover:opacity-90"
@@ -303,7 +307,7 @@ export default function PropertyShowcase() {
                   <div className="aspect-[16/10]">
                     <Image
                       src={photo.url}
-                      alt={photo.asset_type.replace(/_/g, " ")}
+                      alt={`${buildingName} — ${photo.asset_type.replace(/_/g, " ")}`}
                       width={200}
                       height={125}
                       className="h-full w-full object-cover"
@@ -326,7 +330,7 @@ export default function PropertyShowcase() {
 
         {/* ── RIGHT COLUMN ── */}
         <div className="flex flex-col bg-[#faf8f5] lg:w-[42%] lg:h-full lg:overflow-y-auto lg:border-l lg:border-zinc-200/20 dark:bg-zinc-950 dark:lg:border-zinc-800/30">
-          <div className="flex flex-1 flex-col px-8 py-7 sm:px-10 lg:px-10 lg:py-6">
+          <div className="flex flex-1 flex-col px-5 py-6 sm:px-10 lg:px-10 lg:py-6">
 
             {/* Location */}
             <div className="mb-3 flex items-center gap-2">
@@ -340,12 +344,12 @@ export default function PropertyShowcase() {
             </div>
 
             {/* Title — dominant focal point */}
-            <h1 className="text-[38px] font-extrabold leading-[1.02] tracking-[-0.025em] text-[#141425] dark:text-zinc-50 lg:text-[52px]">
+            <h1 className="text-[32px] font-extrabold leading-[1.05] tracking-[-0.025em] text-[#141425] dark:text-zinc-50 sm:text-[38px] lg:text-[52px]">
               {buildingName}
             </h1>
-            <h2 className="mt-0.5 text-[38px] font-extrabold leading-[1.02] tracking-[-0.025em] text-[#141425] dark:text-zinc-50 lg:text-[52px]">
+            <p className="mt-0.5 text-[32px] font-extrabold leading-[1.05] tracking-[-0.025em] text-[#141425] dark:text-zinc-50 sm:text-[38px] lg:text-[52px]" aria-label={`Unit ${p.unit_number}`}>
               Unit <span className="text-amber-600/80 dark:text-amber-500">{p.unit_number}</span>
-            </h2>
+            </p>
 
             {/* Gold accent line */}
             <div className="mt-4 h-[2px] w-10 rounded-full bg-gradient-to-r from-amber-500/60 to-amber-400/20" />
@@ -353,7 +357,7 @@ export default function PropertyShowcase() {
             {/* Price — second most important */}
             {r?.asking_price_aed && (
               <div className="mt-4 flex items-baseline gap-2">
-                <span className="text-[34px] font-extrabold tracking-[-0.02em] text-[#141425] dark:text-zinc-50 lg:text-[42px]">
+                <span className="text-[28px] font-extrabold tracking-[-0.02em] text-[#141425] dark:text-zinc-50 sm:text-[34px] lg:text-[42px]">
                   {formatPrice(r.asking_price_aed)}
                 </span>
                 <span className="text-[12px] font-medium tracking-wide text-zinc-400/60 dark:text-zinc-500">
@@ -427,7 +431,8 @@ export default function PropertyShowcase() {
                 <button
                   type="button"
                   onClick={() => setShowMore(!showMore)}
-                  className="mt-2 text-[13px] font-medium text-amber-600/80 transition-colors hover:text-amber-600 dark:text-amber-500/80 dark:hover:text-amber-500"
+                  aria-expanded={showMore}
+                  className="mt-2 text-[13px] font-medium text-amber-600/80 transition-colors hover:text-amber-600 focus-visible:outline-none focus-visible:underline dark:text-amber-500/80 dark:hover:text-amber-500"
                 >
                   {showMore ? "Show less" : "Read more"}
                 </button>
@@ -592,7 +597,7 @@ export default function PropertyShowcase() {
                   type="button"
                   data-testid="request-viewing-btn"
                   onClick={() => setShowModal(true)}
-                  className="mt-5 w-full rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 px-5 py-3 text-[14px] font-semibold text-white shadow-md shadow-amber-700/15 transition-all hover:from-amber-500 hover:to-amber-400 hover:shadow-lg hover:shadow-amber-600/20"
+                  className="mt-5 w-full rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 px-5 py-3.5 text-[14px] font-semibold text-white shadow-md shadow-amber-700/15 transition-all hover:from-amber-500 hover:to-amber-400 hover:shadow-lg hover:shadow-amber-600/20 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#141425] focus-visible:outline-none"
                 >
                   Request a Viewing
                 </button>
@@ -604,13 +609,14 @@ export default function PropertyShowcase() {
 
       {/* ── VIEWING REQUEST MODAL ── */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div data-testid="viewing-modal" className="relative mx-4 w-full max-w-md rounded-2xl bg-white px-7 py-8 shadow-2xl dark:bg-zinc-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) { setShowModal(false); setSubmitStatus("idle"); setSubmitError(""); } }}>
+          <div data-testid="viewing-modal" role="dialog" aria-modal="true" aria-label="Request a viewing" className="relative mx-4 w-full max-w-md rounded-2xl bg-white px-7 py-8 shadow-2xl dark:bg-zinc-900">
             {/* Close button */}
             <button
               type="button"
               onClick={() => { setShowModal(false); setSubmitStatus("idle"); setSubmitError(""); }}
-              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+              aria-label="Close dialog"
+              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 6L6 18" /><path d="M6 6l12 12" />
@@ -618,7 +624,7 @@ export default function PropertyShowcase() {
             </button>
 
             {submitStatus === "success" ? (
-              <div data-testid="success-message" className="flex flex-col items-center py-8 text-center">
+              <div data-testid="success-message" className="flex flex-col items-center py-8 text-center" role="status" aria-live="polite">
                 <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-50 dark:bg-green-900/30">
                   <svg className="h-7 w-7 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M20 6L9 17l-5-5" />
@@ -642,36 +648,41 @@ export default function PropertyShowcase() {
 
                 <div className="mt-6 flex flex-col gap-4">
                   <div>
-                    <label className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400">
+                    <label htmlFor="viewing-name" className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400">
                       Full name <span className="text-red-400">*</span>
                     </label>
                     <input
+                      id="viewing-name"
                       type="text"
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
                       placeholder="e.g. John Smith"
+                      autoComplete="name"
                       className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3 text-[15px] text-[#141425] outline-none transition-colors placeholder:text-zinc-300 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-100 dark:placeholder:text-zinc-600 dark:focus:border-amber-500/50"
                     />
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400">
+                    <label htmlFor="viewing-phone" className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400">
                       WhatsApp / Phone <span className="text-red-400">*</span>
                     </label>
                     <input
+                      id="viewing-phone"
                       type="tel"
                       value={form.phone}
                       onChange={(e) => setForm({ ...form, phone: e.target.value })}
                       placeholder="e.g. +971 50 123 4567"
+                      autoComplete="tel"
                       className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3 text-[15px] text-[#141425] outline-none transition-colors placeholder:text-zinc-300 focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-100 dark:placeholder:text-zinc-600 dark:focus:border-amber-500/50"
                     />
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400">
+                    <label htmlFor="viewing-date" className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400">
                       Preferred viewing date
                     </label>
                     <input
+                      id="viewing-date"
                       type="date"
                       value={form.date}
                       onChange={(e) => setForm({ ...form, date: e.target.value })}
@@ -680,10 +691,11 @@ export default function PropertyShowcase() {
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400">
+                    <label htmlFor="viewing-message" className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.1em] text-zinc-500 dark:text-zinc-400">
                       Message <span className="text-[11px] font-normal normal-case tracking-normal text-zinc-300 dark:text-zinc-600">(optional)</span>
                     </label>
                     <textarea
+                      id="viewing-message"
                       value={form.message}
                       onChange={(e) => setForm({ ...form, message: e.target.value })}
                       rows={3}
@@ -701,7 +713,7 @@ export default function PropertyShowcase() {
                   type="button"
                   onClick={handleSubmitInquiry}
                   disabled={!form.name.trim() || !form.phone.trim() || submitStatus === "submitting"}
-                  className="mt-6 w-full rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 px-5 py-3.5 text-[15px] font-semibold text-white shadow-md shadow-amber-700/15 transition-all hover:from-amber-500 hover:to-amber-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="mt-6 w-full rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 px-5 py-3.5 text-[15px] font-semibold text-white shadow-md shadow-amber-700/15 transition-all hover:from-amber-500 hover:to-amber-400 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:outline-none"
                 >
                   {submitStatus === "submitting" ? "Submitting..." : "Submit Request"}
                 </button>
