@@ -6,11 +6,11 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 const VIEW_OPTIONS = [
-  { value: "sea", label: "Sea" },
-  { value: "city", label: "City" },
-  { value: "garden", label: "Garden" },
-  { value: "pool", label: "Pool" },
-  { value: "community", label: "Community" },
+  { value: "sea", label: "Sea View" },
+  { value: "city", label: "City View" },
+  { value: "garden", label: "Garden View" },
+  { value: "pool", label: "Pool View" },
+  { value: "community", label: "Community View" },
   { value: "other", label: "Other" },
 ] as const;
 

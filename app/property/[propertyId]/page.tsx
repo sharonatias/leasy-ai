@@ -51,6 +51,13 @@ function formatEnum(value: string | null): string {
   return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function formatViewType(value: string | null): string {
+  if (!value) return "—";
+  const formatted = formatEnum(value);
+  if (value === "other" || formatted.toLowerCase().endsWith("view")) return formatted;
+  return `${formatted} View`;
+}
+
 function formatPrice(value: number | null): string {
   if (!value) return "—";
   return value.toLocaleString("en-AE");
@@ -214,7 +221,7 @@ export default function PropertyShowcase() {
 
   const factsRow2 = [
     p.floor != null ? { value: String(p.floor), label: "Floor" } : null,
-    p.view_type ? { value: formatEnum(p.view_type), label: "View" } : null,
+    p.view_type ? { value: formatViewType(p.view_type), label: "View" } : null,
     p.furnishing ? { value: formatEnum(p.furnishing), label: "Furnishing" } : null,
   ].filter(Boolean) as { value: string; label: string }[];
 
@@ -244,7 +251,8 @@ export default function PropertyShowcase() {
               <div className="absolute inset-0 bg-gradient-to-br from-zinc-200 to-zinc-300 dark:from-zinc-800 dark:to-zinc-900" />
             )}
 
-            <div className="absolute inset-0 bg-gradient-to-t from-black/8 via-transparent to-black/4" />
+            <div className="absolute inset-0 bg-black/[0.10]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-black/5" />
 
             {photos.length > 1 && (
               <>
@@ -359,8 +367,11 @@ export default function PropertyShowcase() {
               {subtitle}
             </p>
 
+            {/* ── Divider: Title/Price → Facts ── */}
+            <div className="my-7 h-px bg-zinc-200/40 dark:bg-zinc-800/40" />
+
             {/* Facts — premium grid */}
-            <div className="mt-7 mb-6 rounded-2xl border border-zinc-200/30 bg-white/50 py-1 dark:border-zinc-800/30 dark:bg-zinc-900/30">
+            <div className="mb-7 rounded-2xl border border-zinc-200/30 bg-white/50 py-1 dark:border-zinc-800/30 dark:bg-zinc-900/30">
               {factsRow1.length > 0 && (
                 <div className="grid grid-cols-3">
                   {factsRow1.map((fact, i) => (
@@ -401,13 +412,16 @@ export default function PropertyShowcase() {
               )}
             </div>
 
+            {/* ── Divider: Facts → About ── */}
+            <div className="mb-7 h-px bg-zinc-200/40 dark:bg-zinc-800/40" />
+
             {/* About — with Read more toggle */}
             {description && (
-              <div className="mb-6">
-                <h3 className="mb-3 text-[20px] font-bold tracking-[-0.01em] text-[#141425] dark:text-zinc-100">
+              <div className="mb-5">
+                <h3 className="mb-3 text-[18px] font-bold tracking-[-0.01em] text-[#141425] dark:text-zinc-100">
                   About this property
                 </h3>
-                <p className={`text-[15px] leading-[1.8] text-zinc-500 dark:text-zinc-400 ${showMore ? "" : "line-clamp-3"}`}>
+                <p className={`text-[14px] leading-[1.85] text-zinc-500 dark:text-zinc-400 ${showMore ? "" : "line-clamp-3"}`}>
                   {description}
                 </p>
                 <button
@@ -422,7 +436,7 @@ export default function PropertyShowcase() {
 
             {/* Highlight pills */}
             {highlightPills.length > 0 && (
-              <div className="mb-6 flex flex-wrap gap-2">
+              <div className="mb-7 flex flex-wrap gap-2">
                 {highlightPills.map((pill) => (
                   <span
                     key={pill}
@@ -434,9 +448,12 @@ export default function PropertyShowcase() {
               </div>
             )}
 
+            {/* ── Divider: About/Pills → Amenities/Nearby ── */}
+            <div className="mb-7 h-px bg-zinc-200/40 dark:bg-zinc-800/40" />
+
             {/* Amenities */}
             <div className="mb-6">
-              <h3 className="mb-3.5 text-[11px] font-bold uppercase tracking-[0.18em] dark:text-zinc-600" style={{ color: '#b5b5bd' }}>
+              <h3 className="mb-3.5 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-400/70 dark:text-zinc-600">
                 Amenities
               </h3>
               {amenitiesItems.length > 0 ? (
@@ -444,7 +461,7 @@ export default function PropertyShowcase() {
                   {amenitiesItems.map((item) => (
                     <span
                       key={item}
-                      className="rounded-lg bg-white/60 px-3.5 py-2 text-[11px] font-medium text-zinc-500 dark:bg-zinc-900/30 dark:text-zinc-400"
+                      className="rounded-full border border-zinc-200/60 bg-white/70 px-3.5 py-1.5 text-[11px] font-semibold tracking-wide text-zinc-500 dark:border-zinc-700/40 dark:bg-zinc-900/30 dark:text-zinc-400"
                     >
                       {item}
                     </span>
@@ -474,26 +491,26 @@ export default function PropertyShowcase() {
 
             {/* Nearby */}
             {nearbyItems.length > 0 && (
-              <div className="mb-6">
-                <h3 className="mb-3.5 text-[11px] font-bold uppercase tracking-[0.18em] dark:text-zinc-600" style={{ color: '#b5b5bd' }}>
+              <div className="mb-7">
+                <h3 className="mb-3.5 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-400/70 dark:text-zinc-600">
                   Nearby
                 </h3>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2.5">
                   {nearbyItems.map((item) => (
                     <div
                       key={item.place}
-                      className="flex items-center justify-between rounded-lg bg-white/60 px-4 py-2.5 dark:bg-zinc-900/30"
+                      className="flex items-center justify-between rounded-xl bg-white/60 px-5 py-3 dark:bg-zinc-900/30"
                     >
-                      <div className="flex items-center gap-2">
-                        <svg className="h-3.5 w-3.5 text-zinc-300 dark:text-zinc-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <div className="flex items-center gap-2.5">
+                        <svg className="h-3.5 w-3.5 text-amber-500/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
                           <circle cx="12" cy="10" r="3" />
                         </svg>
-                        <span className="text-[13px] font-medium text-zinc-600 dark:text-zinc-300">
+                        <span className="text-[13px] font-semibold text-zinc-600 dark:text-zinc-300">
                           {item.place}
                         </span>
                       </div>
-                      <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                      <span className="text-[12px] font-medium text-zinc-400 dark:text-zinc-500">
                         {item.distance}
                       </span>
                     </div>
@@ -502,42 +519,45 @@ export default function PropertyShowcase() {
               </div>
             )}
 
+            {/* ── Divider: Amenities/Nearby → Terms/CTA ── */}
+            <div className="mb-7 h-px bg-zinc-200/40 dark:bg-zinc-800/40" />
+
             {/* Bottom two-column: Rental Terms + CTA */}
-            <div className="mt-auto grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <div className="mt-auto grid grid-cols-1 gap-4 lg:grid-cols-2">
 
               {/* Rental Terms card */}
               {r && (
-                <div className="flex flex-col rounded-2xl border border-zinc-200/25 bg-white/50 px-5 py-5 shadow-sm shadow-zinc-300/10 dark:border-zinc-800/30 dark:bg-zinc-900/30 dark:shadow-none">
-                  <h3 className="mb-3.5 text-[11px] font-bold uppercase tracking-[0.18em] dark:text-zinc-600" style={{ color: '#b5b5bd' }}>
+                <div className="flex flex-col rounded-2xl border border-zinc-200/25 bg-white/50 px-6 py-6 shadow-sm shadow-zinc-300/10 dark:border-zinc-800/30 dark:bg-zinc-900/30 dark:shadow-none">
+                  <h3 className="mb-4 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-400/70 dark:text-zinc-600">
                     Rental Terms
                   </h3>
-                  <div className="flex flex-1 flex-col justify-center gap-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[13px] text-zinc-400 dark:text-zinc-500">Payment</span>
-                      <span className="text-[14px] font-semibold text-[#141425] dark:text-zinc-300">
+                  <div className="flex flex-1 flex-col justify-center gap-0">
+                    <div className="flex items-center justify-between py-3">
+                      <span className="text-[13px] font-medium text-zinc-400 dark:text-zinc-500">Payment</span>
+                      <span className="text-[14px] font-bold text-[#141425] dark:text-zinc-300">
                         {formatEnum(r.payment_schedule)}
                       </span>
                     </div>
                     {r.security_deposit_aed && (
-                      <div className="flex items-center justify-between border-t border-zinc-100/50 pt-3 dark:border-zinc-800/20">
-                        <span className="text-[13px] text-zinc-400 dark:text-zinc-500">Deposit</span>
-                        <span className="text-[14px] font-semibold text-[#141425] dark:text-zinc-300">
+                      <div className="flex items-center justify-between border-t border-zinc-200/30 py-3 dark:border-zinc-800/30">
+                        <span className="text-[13px] font-medium text-zinc-400 dark:text-zinc-500">Deposit</span>
+                        <span className="text-[14px] font-bold text-[#141425] dark:text-zinc-300">
                           {formatPrice(r.security_deposit_aed)} AED
                         </span>
                       </div>
                     )}
                     {p.condition && (
-                      <div className="flex items-center justify-between border-t border-zinc-100/50 pt-3 dark:border-zinc-800/20">
-                        <span className="text-[13px] text-zinc-400 dark:text-zinc-500">Condition</span>
-                        <span className="text-[14px] font-semibold text-[#141425] dark:text-zinc-300">
+                      <div className="flex items-center justify-between border-t border-zinc-200/30 py-3 dark:border-zinc-800/30">
+                        <span className="text-[13px] font-medium text-zinc-400 dark:text-zinc-500">Condition</span>
+                        <span className="text-[14px] font-bold text-[#141425] dark:text-zinc-300">
                           {formatEnum(p.condition)}
                         </span>
                       </div>
                     )}
                     {p.availability_date && (
-                      <div className="flex items-center justify-between border-t border-zinc-100/50 pt-3 dark:border-zinc-800/20">
-                        <span className="text-[13px] text-zinc-400 dark:text-zinc-500">Available</span>
-                        <span className="text-[14px] font-semibold text-[#141425] dark:text-zinc-300">
+                      <div className="flex items-center justify-between border-t border-zinc-200/30 py-3 dark:border-zinc-800/30">
+                        <span className="text-[13px] font-medium text-zinc-400 dark:text-zinc-500">Available</span>
+                        <span className="text-[14px] font-bold text-[#141425] dark:text-zinc-300">
                           {formatDate(p.availability_date)}
                         </span>
                       </div>
@@ -547,13 +567,13 @@ export default function PropertyShowcase() {
               )}
 
               {/* CTA card */}
-              <div className="flex flex-col justify-between rounded-2xl bg-[#141425] px-6 py-5 shadow-lg shadow-[#141425]/6 dark:bg-zinc-800/90 dark:shadow-none">
+              <div className="flex flex-col justify-between rounded-2xl bg-[#141425] px-6 py-6 shadow-lg shadow-[#141425]/6 dark:bg-zinc-800/90 dark:shadow-none">
                 <div>
-                  <p className="text-[16px] font-semibold text-white/95">
-                    Interested?
+                  <p className="text-[17px] font-bold text-white/95">
+                    Schedule a Private Viewing
                   </p>
-                  <p className="mt-1.5 text-[12px] font-light leading-relaxed text-zinc-400">
-                    Schedule a private viewing at your convenience.
+                  <p className="mt-2 text-[12px] font-light leading-relaxed text-zinc-400">
+                    Book at your convenience — we&apos;ll confirm within hours.
                   </p>
                   {trustSignals.length > 0 && (
                     <div className="mt-3 flex flex-col gap-1.5">
