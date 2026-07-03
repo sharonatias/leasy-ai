@@ -10,6 +10,192 @@ type SectionStatus = {
   complete: boolean;
 };
 
+type ExportData = {
+  buildingName: string;
+  unitNumber: string;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  floor: number | null;
+  sizeSqft: number | null;
+  viewType: string | null;
+  furnishing: string | null;
+  condition: string | null;
+  availabilityDate: string | null;
+  priceAed: number | null;
+  paymentSchedule: string | null;
+  depositAed: number | null;
+  description: string | null;
+  amenitiesItems: string[];
+  nearby: { place: string; distance: string }[];
+  highlightPills: string[];
+  publicUrl: string;
+};
+
+function fmtEnum(v: string | null): string {
+  if (!v) return "";
+  return v.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function fmtPrice(v: number | null): string {
+  if (!v) return "";
+  return v.toLocaleString("en-AE");
+}
+
+function fmtDate(v: string | null): string {
+  if (!v) return "";
+  const d = new Date(v);
+  return `${d.getDate()} ${d.toLocaleDateString("en-GB", { month: "short" })} ${d.getFullYear()}`;
+}
+
+function fmtViewType(v: string | null): string {
+  if (!v) return "";
+  const f = fmtEnum(v);
+  if (v === "other" || f.toLowerCase().endsWith("view")) return f;
+  return `${f} View`;
+}
+
+function generateBayut(d: ExportData): string {
+  const lines: string[] = [];
+  lines.push(`${d.buildingName} — Unit ${d.unitNumber}`);
+  if (d.priceAed) lines.push(`AED ${fmtPrice(d.priceAed)} / year`);
+  lines.push("");
+  const specs: string[] = [];
+  if (d.bedrooms != null) specs.push(`Bedrooms: ${d.bedrooms}`);
+  if (d.bathrooms != null) specs.push(`Bathrooms: ${d.bathrooms}`);
+  if (d.sizeSqft != null) specs.push(`Size: ${d.sizeSqft.toLocaleString()} sqft`);
+  if (d.floor != null) specs.push(`Floor: ${d.floor}`);
+  if (d.viewType) specs.push(`View: ${fmtViewType(d.viewType)}`);
+  if (d.furnishing) specs.push(`Furnishing: ${fmtEnum(d.furnishing)}`);
+  if (specs.length) { lines.push(specs.join(" | ")); lines.push(""); }
+  if (d.description) { lines.push(d.description); lines.push(""); }
+  if (d.amenitiesItems.length) { lines.push("Amenities: " + d.amenitiesItems.join(", ")); lines.push(""); }
+  if (d.nearby.length) { lines.push("Nearby:"); d.nearby.forEach((n) => lines.push(`• ${n.place} — ${n.distance}`)); lines.push(""); }
+  if (d.paymentSchedule) lines.push(`Payment: ${fmtEnum(d.paymentSchedule)}`);
+  if (d.depositAed) lines.push(`Deposit: AED ${fmtPrice(d.depositAed)}`);
+  if (d.condition) lines.push(`Condition: ${fmtEnum(d.condition)}`);
+  if (d.availabilityDate) lines.push(`Available: ${fmtDate(d.availabilityDate)}`);
+  lines.push(""); lines.push("Contact us for a viewing.");
+  return lines.join("\n");
+}
+
+function generatePropertyFinder(d: ExportData): string {
+  const lines: string[] = [];
+  lines.push(`${d.buildingName} — Unit ${d.unitNumber}`);
+  if (d.priceAed) lines.push(`AED ${fmtPrice(d.priceAed)} / year`);
+  lines.push("");
+  lines.push("Key Features:");
+  if (d.bedrooms != null) lines.push(`✓ ${d.bedrooms} Bedroom${d.bedrooms > 1 ? "s" : ""}`);
+  if (d.bathrooms != null) lines.push(`✓ ${d.bathrooms} Bathroom${d.bathrooms > 1 ? "s" : ""}`);
+  if (d.sizeSqft != null) lines.push(`✓ ${d.sizeSqft.toLocaleString()} sqft`);
+  if (d.viewType) lines.push(`✓ ${fmtViewType(d.viewType)}`);
+  if (d.furnishing) lines.push(`✓ ${fmtEnum(d.furnishing)}`);
+  if (d.floor != null) lines.push(`✓ Floor ${d.floor}`);
+  lines.push("");
+  if (d.description) { lines.push(d.description); lines.push(""); }
+  if (d.amenitiesItems.length) { lines.push("Amenities:"); d.amenitiesItems.forEach((a) => lines.push(`• ${a}`)); lines.push(""); }
+  if (d.availabilityDate) lines.push(`Available from ${fmtDate(d.availabilityDate)}`);
+  if (d.depositAed) lines.push(`Security deposit: AED ${fmtPrice(d.depositAed)}`);
+  return lines.join("\n");
+}
+
+function generateDubizzle(d: ExportData): string {
+  const lines: string[] = [];
+  const title = d.priceAed ? `${d.buildingName} Unit ${d.unitNumber} — AED ${fmtPrice(d.priceAed)}/yr` : `${d.buildingName} Unit ${d.unitNumber}`;
+  lines.push(title);
+  lines.push("");
+  const specs: string[] = [];
+  if (d.bedrooms != null) specs.push(`${d.bedrooms} BR`);
+  if (d.bathrooms != null) specs.push(`${d.bathrooms} BA`);
+  if (d.sizeSqft != null) specs.push(`${d.sizeSqft.toLocaleString()} sqft`);
+  if (d.floor != null) specs.push(`Floor ${d.floor}`);
+  if (d.furnishing) specs.push(fmtEnum(d.furnishing));
+  if (specs.length) lines.push(specs.join(" · "));
+  lines.push("");
+  if (d.description) { const desc = d.description.length > 300 ? d.description.slice(0, 297) + "..." : d.description; lines.push(desc); lines.push(""); }
+  if (d.amenitiesItems.length) { lines.push("• " + d.amenitiesItems.join(" • ")); lines.push(""); }
+  if (d.priceAed) lines.push(`Rent: AED ${fmtPrice(d.priceAed)}/year${d.paymentSchedule ? ` (${fmtEnum(d.paymentSchedule)})` : ""}`);
+  lines.push(""); lines.push("Message for details.");
+  return lines.join("\n");
+}
+
+function generateFacebook(d: ExportData): string {
+  const lines: string[] = [];
+  const hook = d.viewType ? `Looking for a home with ${fmtViewType(d.viewType).toLowerCase()}?` : `Your next home is waiting.`;
+  lines.push(hook);
+  lines.push("");
+  lines.push(`${d.buildingName} — Unit ${d.unitNumber}`);
+  if (d.priceAed) lines.push(`AED ${fmtPrice(d.priceAed)} / year`);
+  lines.push("");
+  if (d.description) { lines.push(d.description); lines.push(""); }
+  if (d.highlightPills.length) { d.highlightPills.forEach((p) => lines.push(`✨ ${p}`)); lines.push(""); }
+  if (d.amenitiesItems.length) { lines.push("Building amenities: " + d.amenitiesItems.join(", ")); lines.push(""); }
+  lines.push("DM for details or to schedule a private viewing.");
+  lines.push(d.publicUrl);
+  return lines.join("\n");
+}
+
+function generateWhatsApp(d: ExportData): string {
+  const lines: string[] = [];
+  lines.push(`🏠 *${d.buildingName} — Unit ${d.unitNumber}*`);
+  if (d.priceAed) lines.push(`💰 AED ${fmtPrice(d.priceAed)}/year`);
+  lines.push("");
+  const specs: string[] = [];
+  if (d.bedrooms != null) specs.push(`🛏 ${d.bedrooms} BR`);
+  if (d.bathrooms != null) specs.push(`🚿 ${d.bathrooms} BA`);
+  if (d.sizeSqft != null) specs.push(`📐 ${d.sizeSqft.toLocaleString()} sqft`);
+  if (d.floor != null) specs.push(`🏢 Floor ${d.floor}`);
+  if (specs.length) lines.push(specs.join("  "));
+  lines.push("");
+  if (d.highlightPills.length) { lines.push(d.highlightPills.slice(0, 3).map((p) => `✅ ${p}`).join("\n")); lines.push(""); }
+  if (d.amenitiesItems.length) lines.push("🏊 " + d.amenitiesItems.join(" · "));
+  lines.push("");
+  lines.push("Interested? Message me! 👇");
+  lines.push(d.publicUrl);
+  return lines.join("\n");
+}
+
+function generateEmail(d: ExportData): string {
+  const lines: string[] = [];
+  lines.push(`Subject: ${d.buildingName} Unit ${d.unitNumber} — ${d.priceAed ? `AED ${fmtPrice(d.priceAed)}/year` : "For Rent"}`);
+  lines.push("");
+  lines.push("Dear prospective tenant,");
+  lines.push("");
+  lines.push(`We are pleased to present Unit ${d.unitNumber} at ${d.buildingName} for rent.`);
+  lines.push("");
+  lines.push("Property Details:");
+  if (d.bedrooms != null) lines.push(`  Bedrooms: ${d.bedrooms}`);
+  if (d.bathrooms != null) lines.push(`  Bathrooms: ${d.bathrooms}`);
+  if (d.sizeSqft != null) lines.push(`  Size: ${d.sizeSqft.toLocaleString()} sqft`);
+  if (d.floor != null) lines.push(`  Floor: ${d.floor}`);
+  if (d.viewType) lines.push(`  View: ${fmtViewType(d.viewType)}`);
+  if (d.furnishing) lines.push(`  Furnishing: ${fmtEnum(d.furnishing)}`);
+  if (d.condition) lines.push(`  Condition: ${fmtEnum(d.condition)}`);
+  lines.push("");
+  if (d.description) { lines.push(d.description); lines.push(""); }
+  if (d.amenitiesItems.length) { lines.push("Building Amenities:"); d.amenitiesItems.forEach((a) => lines.push(`  • ${a}`)); lines.push(""); }
+  lines.push("Rental Terms:");
+  if (d.priceAed) lines.push(`  Annual Rent: AED ${fmtPrice(d.priceAed)}`);
+  if (d.paymentSchedule) lines.push(`  Payment: ${fmtEnum(d.paymentSchedule)}`);
+  if (d.depositAed) lines.push(`  Security Deposit: AED ${fmtPrice(d.depositAed)}`);
+  if (d.availabilityDate) lines.push(`  Available: ${fmtDate(d.availabilityDate)}`);
+  lines.push("");
+  lines.push(`View the full listing: ${d.publicUrl}`);
+  lines.push("");
+  lines.push("We would be happy to arrange a private viewing at your convenience.");
+  lines.push("");
+  lines.push("Best regards");
+  return lines.join("\n");
+}
+
+const EXPORT_PLATFORMS = [
+  { key: "bayut", name: "Bayut", generate: generateBayut },
+  { key: "propertyfinder", name: "Property Finder", generate: generatePropertyFinder },
+  { key: "dubizzle", name: "Dubizzle", generate: generateDubizzle },
+  { key: "facebook", name: "Facebook", generate: generateFacebook },
+  { key: "whatsapp", name: "WhatsApp", generate: generateWhatsApp },
+  { key: "email", name: "Email", generate: generateEmail },
+] as const;
+
 type Inquiry = {
   id: string;
   tenant_name: string | null;
@@ -46,6 +232,9 @@ export default function PropertyReview() {
   const [leadToast, setLeadToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [deletingLeadId, setDeletingLeadId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exportData, setExportData] = useState<ExportData | null>(null);
+  const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
+  const [copiedPlatform, setCopiedPlatform] = useState<string | null>(null);
 
   useEffect(() => {
     if (!propertyId) return;
@@ -58,7 +247,7 @@ export default function PropertyReview() {
           supabase
             .from("properties")
             .select(
-              "building_id, unit_number, bedrooms, bathrooms, floor, size_sqft, view_type, furnishing, condition, availability_date, status"
+              "building_id, unit_number, bedrooms, bathrooms, floor, size_sqft, view_type, furnishing, condition, availability_date, status, buildings(name)"
             )
             .eq("id", propertyId)
             .single(),
@@ -74,7 +263,7 @@ export default function PropertyReview() {
             .eq("status", "uploaded"),
           supabase
             .from("ai_generated_content")
-            .select("id")
+            .select("id, content")
             .eq("property_id", propertyId)
             .eq("content_type", "marketing_description")
             .eq("is_current", true)
@@ -140,6 +329,33 @@ export default function PropertyReview() {
         { label: "Rental Terms", complete: rentalTerms },
         { label: "Photos", complete: photosOk },
       ]);
+
+      let storyDraft: { description?: string; amenitiesItems?: string[]; nearby?: { place: string; distance: string }[]; highlightPills?: string[] } = {};
+      if (listing?.content) {
+        try { storyDraft = JSON.parse(listing.content); } catch { /* ignore */ }
+      }
+
+      const expUrl = typeof window !== "undefined" ? `${window.location.origin}/property/${propertyId}` : `/property/${propertyId}`;
+      setExportData({
+        buildingName: (property as Record<string, unknown>)?.buildings ? ((property as Record<string, unknown>).buildings as { name: string }).name : "Property",
+        unitNumber: property?.unit_number ?? "",
+        bedrooms: property?.bedrooms ?? null,
+        bathrooms: property?.bathrooms ?? null,
+        floor: property?.floor ?? null,
+        sizeSqft: property?.size_sqft ?? null,
+        viewType: property?.view_type ?? null,
+        furnishing: property?.furnishing ?? null,
+        condition: property?.condition ?? null,
+        availabilityDate: property?.availability_date ?? null,
+        priceAed: rental?.asking_price_aed ?? null,
+        paymentSchedule: rental?.payment_schedule ?? null,
+        depositAed: rental?.security_deposit_aed ?? null,
+        description: storyDraft.description ?? null,
+        amenitiesItems: (storyDraft.amenitiesItems ?? []).filter(Boolean),
+        nearby: (storyDraft.nearby ?? []).filter((n: { place: string }) => n.place),
+        highlightPills: (storyDraft.highlightPills ?? []).filter(Boolean),
+        publicUrl: expUrl,
+      });
 
       setLoading(false);
     }
@@ -589,6 +805,64 @@ export default function PropertyReview() {
             >
               Preview Property
             </a>
+          </div>
+        )}
+
+        {/* ── Listing Export ── */}
+        {exportData && (
+          <div className="flex flex-col gap-3">
+            <h2 className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+              Listing Export
+            </h2>
+            <div className="flex flex-col gap-2">
+              {EXPORT_PLATFORMS.map((platform) => {
+                const isExpanded = expandedPlatform === platform.key;
+                const isCopied = copiedPlatform === platform.key;
+                const text = platform.generate(exportData);
+                return (
+                  <div key={platform.key} className="rounded-lg border border-zinc-200 dark:border-zinc-700">
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                        {platform.name}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedPlatform(isExpanded ? null : platform.key)}
+                          className="rounded-md border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                        >
+                          {isExpanded ? "Close" : "Preview"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(text);
+                              setCopiedPlatform(platform.key);
+                              setTimeout(() => setCopiedPlatform(null), 2000);
+                            } catch { /* clipboard not available */ }
+                          }}
+                          className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+                            isCopied
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
+                              : "border-zinc-200 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                          }`}
+                        >
+                          {isCopied ? "Copied!" : "Copy"}
+                        </button>
+                      </div>
+                    </div>
+                    {isExpanded && (
+                      <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-700">
+                        <pre className="whitespace-pre-wrap text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+                          {text}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
