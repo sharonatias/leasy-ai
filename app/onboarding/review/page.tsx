@@ -43,6 +43,8 @@ export default function PropertyReview() {
   const [propertyStatus, setPropertyStatus] = useState<string>("draft");
   const [publishStatus, setPublishStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
   const [copied, setCopied] = useState(false);
+  const [leadToast, setLeadToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [deletingLeadId, setDeletingLeadId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -400,6 +402,27 @@ export default function PropertyReview() {
     }
   }
 
+  async function handleDeleteLead(inq: Inquiry) {
+    if (!window.confirm("Delete this lead? This cannot be undone.")) return;
+    setDeletingLeadId(inq.id);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("tenant_inquiries")
+      .delete()
+      .eq("id", inq.id);
+    if (error) {
+      setDeletingLeadId(null);
+      setLeadToast({ type: "error", message: "Failed to delete lead." });
+      setTimeout(() => setLeadToast(null), 3000);
+      return;
+    }
+    setInquiries((prev) => prev.filter((i) => i.id !== inq.id));
+    setViewings((prev) => prev.filter((v) => v.inquiry_id !== inq.id));
+    setDeletingLeadId(null);
+    setLeadToast({ type: "success", message: `${inq.tenant_name ?? "Lead"} deleted.` });
+    setTimeout(() => setLeadToast(null), 3000);
+  }
+
   const nextStep = getNextStep();
 
   return (
@@ -582,6 +605,18 @@ export default function PropertyReview() {
             )}
           </div>
 
+          {leadToast && (
+            <div
+              className={`rounded-lg px-4 py-2.5 text-xs font-medium ${
+                leadToast.type === "success"
+                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                  : "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+              }`}
+            >
+              {leadToast.message}
+            </div>
+          )}
+
           {inquiries.length === 0 ? (
             <div className="rounded-lg border border-dashed border-zinc-200 px-4 py-6 text-center dark:border-zinc-700">
               <p className="text-sm text-zinc-400 dark:text-zinc-500">
@@ -600,7 +635,7 @@ export default function PropertyReview() {
                 return (
                   <div
                     key={inq.id}
-                    className="rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-700"
+                    className={`group/lead rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-700 ${deletingLeadId === inq.id ? "opacity-50 pointer-events-none" : ""}`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex flex-col gap-0.5">
@@ -613,9 +648,21 @@ export default function PropertyReview() {
                           </span>
                         )}
                       </div>
-                      <span className="text-[11px] text-zinc-300 dark:text-zinc-600">
-                        {timeAgo(inq.created_at)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-zinc-300 dark:text-zinc-600">
+                          {timeAgo(inq.created_at)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteLead(inq)}
+                          disabled={deletingLeadId !== null}
+                          className="hidden rounded p-1 text-zinc-300 transition-colors hover:bg-red-50 hover:text-red-500 group-hover/lead:block dark:text-zinc-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+                        >
+                          <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M18 6L6 18" /><path d="M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                     {(viewingDate || message) && (
                       <div className="mt-2 flex flex-col gap-1 border-t border-zinc-100 pt-2 dark:border-zinc-800">
