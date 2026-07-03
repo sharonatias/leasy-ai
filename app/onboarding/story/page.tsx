@@ -27,6 +27,11 @@ type RentalData = {
   security_deposit_aed: number | null;
 };
 
+type NearbyItem = {
+  place: string;
+  distance: string;
+};
+
 type ListingDraft = {
   title: string;
   description: string;
@@ -35,6 +40,8 @@ type ListingDraft = {
   headline: string;
   highlightPills: string[];
   trustSignals: string[];
+  amenitiesItems: string[];
+  nearby: NearbyItem[];
 };
 
 function formatEnum(value: string | null): string {
@@ -115,7 +122,22 @@ function generateDraft(
     "Fast owner response",
   ];
 
-  return { title, description, highlights, amenities, headline, highlightPills, trustSignals };
+  const amenitiesItems = [
+    "Swimming Pool",
+    "Fitness Center",
+    "24/7 Security",
+    "Covered Parking",
+    "Kids Play Area",
+  ];
+
+  const nearby: NearbyItem[] = [
+    { place: "IMG Worlds of Adventure", distance: "5 min drive" },
+    { place: "Global Village", distance: "8 min drive" },
+    { place: "Downtown Dubai", distance: "20 min drive" },
+    { place: "DXB Airport", distance: "25 min drive" },
+  ];
+
+  return { title, description, highlights, amenities, headline, highlightPills, trustSignals, amenitiesItems, nearby };
 }
 
 export default function PropertyStory() {
@@ -148,6 +170,8 @@ export default function PropertyStory() {
           const parsed = JSON.parse(existing.content);
           if (!parsed.highlightPills) parsed.highlightPills = [];
           if (!parsed.trustSignals) parsed.trustSignals = [];
+          if (!parsed.amenitiesItems) parsed.amenitiesItems = [];
+          if (!parsed.nearby) parsed.nearby = [];
           setDraft(parsed);
           setLoading(false);
           return;
@@ -313,6 +337,112 @@ export default function PropertyStory() {
               rows={3}
               className={textareaClass}
             />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                Amenities List
+              </label>
+              <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                {draft.amenitiesItems.length} items
+              </span>
+            </div>
+            <p className="text-xs text-zinc-400 dark:text-zinc-500">
+              Shown as icons on the property page. Replaces the default amenities.
+            </p>
+            <div className="flex flex-col gap-2">
+              {draft.amenitiesItems.map((item, i) => (
+                <div key={i} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={item}
+                    onChange={(e) => {
+                      const updated = [...draft.amenitiesItems];
+                      updated[i] = e.target.value;
+                      setDraft((prev) => prev ? { ...prev, amenitiesItems: updated } : prev);
+                    }}
+                    className="flex-1 rounded-lg border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = draft.amenitiesItems.filter((_, j) => j !== i);
+                      setDraft((prev) => prev ? { ...prev, amenitiesItems: updated } : prev);
+                    }}
+                    className="rounded-lg border border-zinc-200 px-3 text-xs text-zinc-400 transition-colors hover:border-red-300 hover:text-red-500 dark:border-zinc-700 dark:text-zinc-500"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setDraft((prev) => prev ? { ...prev, amenitiesItems: [...prev.amenitiesItems, ""] } : prev)}
+                className="w-full rounded-lg border border-dashed border-zinc-200 py-2 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-400 hover:text-zinc-600 dark:border-zinc-700 dark:text-zinc-500"
+              >
+                + Add amenity
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                Nearby
+              </label>
+              <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                {draft.nearby.length} items
+              </span>
+            </div>
+            <p className="text-xs text-zinc-400 dark:text-zinc-500">
+              Landmarks near the property with estimated drive times.
+            </p>
+            <div className="flex flex-col gap-2">
+              {draft.nearby.map((item, i) => (
+                <div key={i} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={item.place}
+                    placeholder="Place name"
+                    onChange={(e) => {
+                      const updated = [...draft.nearby];
+                      updated[i] = { ...updated[i], place: e.target.value };
+                      setDraft((prev) => prev ? { ...prev, nearby: updated } : prev);
+                    }}
+                    className="flex-1 rounded-lg border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-500"
+                  />
+                  <input
+                    type="text"
+                    value={item.distance}
+                    placeholder="e.g. 5 min drive"
+                    onChange={(e) => {
+                      const updated = [...draft.nearby];
+                      updated[i] = { ...updated[i], distance: e.target.value };
+                      setDraft((prev) => prev ? { ...prev, nearby: updated } : prev);
+                    }}
+                    className="w-32 rounded-lg border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = draft.nearby.filter((_, j) => j !== i);
+                      setDraft((prev) => prev ? { ...prev, nearby: updated } : prev);
+                    }}
+                    className="rounded-lg border border-zinc-200 px-3 text-xs text-zinc-400 transition-colors hover:border-red-300 hover:text-red-500 dark:border-zinc-700 dark:text-zinc-500"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setDraft((prev) => prev ? { ...prev, nearby: [...prev.nearby, { place: "", distance: "" }] } : prev)}
+                className="w-full rounded-lg border border-dashed border-zinc-200 py-2 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-400 hover:text-zinc-600 dark:border-zinc-700 dark:text-zinc-500"
+              >
+                + Add nearby place
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-col gap-2">

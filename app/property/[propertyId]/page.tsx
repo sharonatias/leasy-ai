@@ -29,6 +29,11 @@ type MediaRecord = {
   url: string;
 };
 
+type NearbyItem = {
+  place: string;
+  distance: string;
+};
+
 type ListingDraft = {
   title: string;
   description: string;
@@ -37,6 +42,8 @@ type ListingDraft = {
   headline: string;
   highlightPills?: string[];
   trustSignals?: string[];
+  amenitiesItems?: string[];
+  nearby?: NearbyItem[];
 };
 
 function formatEnum(value: string | null): string {
@@ -188,6 +195,8 @@ export default function PropertyShowcase() {
   const description = draft?.description ?? null;
   const highlightPills = (draft?.highlightPills ?? []).filter(Boolean);
   const trustSignals = (draft?.trustSignals ?? []).filter(Boolean);
+  const amenitiesItems = (draft?.amenitiesItems ?? []).filter(Boolean);
+  const nearbyItems = (draft?.nearby ?? []).filter((n) => n.place);
 
   const subtitle = [
     p.furnishing ? formatEnum(p.furnishing) : null,
@@ -425,30 +434,73 @@ export default function PropertyShowcase() {
               </div>
             )}
 
-            {/* Amenities — icon row */}
+            {/* Amenities */}
             <div className="mb-6">
               <h3 className="mb-3.5 text-[11px] font-bold uppercase tracking-[0.18em] dark:text-zinc-600" style={{ color: '#b5b5bd' }}>
                 Amenities
               </h3>
-              <div className="grid grid-cols-5 gap-2">
-                {[
-                  { name: "Pool", icon: <><path d="M2 12h2a2 2 0 012 2 2 2 0 002 2h0a2 2 0 002-2 2 2 0 012-2h2a2 2 0 012 2 2 2 0 002 2h0a2 2 0 002-2 2 2 0 012-2h2" /><path d="M2 17h2a2 2 0 012 2 2 2 0 002 2h0a2 2 0 002-2 2 2 0 012-2h2a2 2 0 012 2 2 2 0 002 2h0a2 2 0 002-2 2 2 0 012-2h2" /><path d="M9 8V4a2 2 0 012-2h2a2 2 0 012 2v4" /></> },
-                  { name: "Gym", icon: <><path d="M6.5 6.5h11" /><path d="M6.5 17.5h11" /><path d="M12 6.5v11" /><rect x="3" y="8" width="3" height="8" rx="1" /><rect x="18" y="8" width="3" height="8" rx="1" /></> },
-                  { name: "Security", icon: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></> },
-                  { name: "Parking", icon: <><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M9 17V7h4a3 3 0 010 6H9" /></> },
-                  { name: "Kids", icon: <><circle cx="12" cy="4" r="2" /><path d="M12 6v4" /><path d="M8 10l4 2 4-2" /><path d="M10 14l-2 8" /><path d="M14 14l2 8" /></> },
-                ].map((amenity) => (
-                  <div key={amenity.name} className="flex flex-col items-center gap-1.5 rounded-xl bg-white/60 py-3 dark:bg-zinc-900/30">
-                    <svg className="h-5 w-5 text-zinc-400 dark:text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      {amenity.icon}
-                    </svg>
-                    <span className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500">
-                      {amenity.name}
+              {amenitiesItems.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {amenitiesItems.map((item) => (
+                    <span
+                      key={item}
+                      className="rounded-lg bg-white/60 px-3.5 py-2 text-[11px] font-medium text-zinc-500 dark:bg-zinc-900/30 dark:text-zinc-400"
+                    >
+                      {item}
                     </span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-5 gap-2">
+                  {[
+                    { name: "Pool", icon: <><path d="M2 12h2a2 2 0 012 2 2 2 0 002 2h0a2 2 0 002-2 2 2 0 012-2h2a2 2 0 012 2 2 2 0 002 2h0a2 2 0 002-2 2 2 0 012-2h2" /><path d="M2 17h2a2 2 0 012 2 2 2 0 002 2h0a2 2 0 002-2 2 2 0 012-2h2a2 2 0 012 2 2 2 0 002 2h0a2 2 0 002-2 2 2 0 012-2h2" /><path d="M9 8V4a2 2 0 012-2h2a2 2 0 012 2v4" /></> },
+                    { name: "Gym", icon: <><path d="M6.5 6.5h11" /><path d="M6.5 17.5h11" /><path d="M12 6.5v11" /><rect x="3" y="8" width="3" height="8" rx="1" /><rect x="18" y="8" width="3" height="8" rx="1" /></> },
+                    { name: "Security", icon: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></> },
+                    { name: "Parking", icon: <><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M9 17V7h4a3 3 0 010 6H9" /></> },
+                    { name: "Kids", icon: <><circle cx="12" cy="4" r="2" /><path d="M12 6v4" /><path d="M8 10l4 2 4-2" /><path d="M10 14l-2 8" /><path d="M14 14l2 8" /></> },
+                  ].map((amenity) => (
+                    <div key={amenity.name} className="flex flex-col items-center gap-1.5 rounded-xl bg-white/60 py-3 dark:bg-zinc-900/30">
+                      <svg className="h-5 w-5 text-zinc-400 dark:text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        {amenity.icon}
+                      </svg>
+                      <span className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500">
+                        {amenity.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+
+            {/* Nearby */}
+            {nearbyItems.length > 0 && (
+              <div className="mb-6">
+                <h3 className="mb-3.5 text-[11px] font-bold uppercase tracking-[0.18em] dark:text-zinc-600" style={{ color: '#b5b5bd' }}>
+                  Nearby
+                </h3>
+                <div className="flex flex-col gap-2">
+                  {nearbyItems.map((item) => (
+                    <div
+                      key={item.place}
+                      className="flex items-center justify-between rounded-lg bg-white/60 px-4 py-2.5 dark:bg-zinc-900/30"
+                    >
+                      <div className="flex items-center gap-2">
+                        <svg className="h-3.5 w-3.5 text-zinc-300 dark:text-zinc-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                          <circle cx="12" cy="10" r="3" />
+                        </svg>
+                        <span className="text-[13px] font-medium text-zinc-600 dark:text-zinc-300">
+                          {item.place}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                        {item.distance}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Bottom two-column: Rental Terms + CTA */}
             <div className="mt-auto grid grid-cols-1 gap-3 lg:grid-cols-2">
