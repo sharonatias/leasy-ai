@@ -33,6 +33,8 @@ type ListingDraft = {
   highlights: string;
   amenities: string;
   headline: string;
+  highlightPills: string[];
+  trustSignals: string[];
 };
 
 function formatEnum(value: string | null): string {
@@ -100,7 +102,20 @@ function generateDraft(
 
   const headline = `Your next home in ${building} — ${bed} BR with ${view.toLowerCase()} views`;
 
-  return { title, description, highlights, amenities, headline };
+  const highlightPills = [
+    furn ? `${furn} & move-in ready` : "",
+    sqft ? `Spacious ${sqft.toLocaleString()} sqft layout` : "",
+    view ? `${view} views` : "",
+    cond ? `${cond} condition` : "",
+  ].filter(Boolean).slice(0, 4);
+
+  const trustSignals = [
+    "Secure inquiry",
+    "Private viewing available",
+    "Fast owner response",
+  ];
+
+  return { title, description, highlights, amenities, headline, highlightPills, trustSignals };
 }
 
 export default function PropertyStory() {
@@ -130,7 +145,10 @@ export default function PropertyStory() {
 
       if (existing) {
         try {
-          setDraft(JSON.parse(existing.content));
+          const parsed = JSON.parse(existing.content);
+          if (!parsed.highlightPills) parsed.highlightPills = [];
+          if (!parsed.trustSignals) parsed.trustSignals = [];
+          setDraft(parsed);
           setLoading(false);
           return;
         } catch {
@@ -307,6 +325,104 @@ export default function PropertyStory() {
               onChange={(e) => updateField("headline", e.target.value)}
               className="w-full rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-500"
             />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                Highlight Pills
+              </label>
+              <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                {draft.highlightPills.length}/4
+              </span>
+            </div>
+            <p className="text-xs text-zinc-400 dark:text-zinc-500">
+              Short phrases shown below the About section on the property page.
+            </p>
+            <div className="flex flex-col gap-2">
+              {draft.highlightPills.map((pill, i) => (
+                <div key={i} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={pill}
+                    onChange={(e) => {
+                      const updated = [...draft.highlightPills];
+                      updated[i] = e.target.value;
+                      setDraft((prev) => prev ? { ...prev, highlightPills: updated } : prev);
+                    }}
+                    className="flex-1 rounded-lg border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = draft.highlightPills.filter((_, j) => j !== i);
+                      setDraft((prev) => prev ? { ...prev, highlightPills: updated } : prev);
+                    }}
+                    className="rounded-lg border border-zinc-200 px-3 text-xs text-zinc-400 transition-colors hover:border-red-300 hover:text-red-500 dark:border-zinc-700 dark:text-zinc-500"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              {draft.highlightPills.length < 4 && (
+                <button
+                  type="button"
+                  onClick={() => setDraft((prev) => prev ? { ...prev, highlightPills: [...prev.highlightPills, ""] } : prev)}
+                  className="w-full rounded-lg border border-dashed border-zinc-200 py-2 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-400 hover:text-zinc-600 dark:border-zinc-700 dark:text-zinc-500"
+                >
+                  + Add highlight
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                Trust Signals
+              </label>
+              <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                {draft.trustSignals.length}/3
+              </span>
+            </div>
+            <p className="text-xs text-zinc-400 dark:text-zinc-500">
+              Shown inside the CTA card on the property page.
+            </p>
+            <div className="flex flex-col gap-2">
+              {draft.trustSignals.map((signal, i) => (
+                <div key={i} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={signal}
+                    onChange={(e) => {
+                      const updated = [...draft.trustSignals];
+                      updated[i] = e.target.value;
+                      setDraft((prev) => prev ? { ...prev, trustSignals: updated } : prev);
+                    }}
+                    className="flex-1 rounded-lg border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 outline-none transition-colors focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = draft.trustSignals.filter((_, j) => j !== i);
+                      setDraft((prev) => prev ? { ...prev, trustSignals: updated } : prev);
+                    }}
+                    className="rounded-lg border border-zinc-200 px-3 text-xs text-zinc-400 transition-colors hover:border-red-300 hover:text-red-500 dark:border-zinc-700 dark:text-zinc-500"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              {draft.trustSignals.length < 3 && (
+                <button
+                  type="button"
+                  onClick={() => setDraft((prev) => prev ? { ...prev, trustSignals: [...prev.trustSignals, ""] } : prev)}
+                  className="w-full rounded-lg border border-dashed border-zinc-200 py-2 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-400 hover:text-zinc-600 dark:border-zinc-700 dark:text-zinc-500"
+                >
+                  + Add trust signal
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

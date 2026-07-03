@@ -35,6 +35,8 @@ type ListingDraft = {
   highlights: string;
   amenities: string;
   headline: string;
+  highlightPills?: string[];
+  trustSignals?: string[];
 };
 
 function formatEnum(value: string | null): string {
@@ -184,6 +186,8 @@ export default function PropertyShowcase() {
 
   const buildingName = p.buildings?.name ?? "Property";
   const description = draft?.description ?? null;
+  const highlightPills = (draft?.highlightPills ?? []).filter(Boolean);
+  const trustSignals = (draft?.trustSignals ?? []).filter(Boolean);
 
   const subtitle = [
     p.furnishing ? formatEnum(p.furnishing) : null,
@@ -407,6 +411,20 @@ export default function PropertyShowcase() {
               </div>
             )}
 
+            {/* Highlight pills */}
+            {highlightPills.length > 0 && (
+              <div className="mb-6 flex flex-wrap gap-2">
+                {highlightPills.map((pill) => (
+                  <span
+                    key={pill}
+                    className="rounded-full border border-amber-200/50 bg-amber-50/50 px-3.5 py-1.5 text-[11px] font-semibold tracking-wide text-amber-700/80 dark:border-amber-800/30 dark:bg-amber-900/15 dark:text-amber-400/80"
+                  >
+                    {pill}
+                  </span>
+                ))}
+              </div>
+            )}
+
             {/* Amenities — icon row */}
             <div className="mb-6">
               <h3 className="mb-3.5 text-[11px] font-bold uppercase tracking-[0.18em] dark:text-zinc-600" style={{ color: '#b5b5bd' }}>
@@ -485,6 +503,18 @@ export default function PropertyShowcase() {
                   <p className="mt-1.5 text-[12px] font-light leading-relaxed text-zinc-400">
                     Schedule a private viewing at your convenience.
                   </p>
+                  {trustSignals.length > 0 && (
+                    <div className="mt-3 flex flex-col gap-1.5">
+                      {trustSignals.map((signal) => (
+                        <div key={signal} className="flex items-center gap-1.5">
+                          <svg className="h-3 w-3 text-emerald-400/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20 6L9 17l-5-5" />
+                          </svg>
+                          <span className="text-[11px] font-medium text-zinc-400/80">{signal}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <button
                   type="button"
