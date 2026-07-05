@@ -5,6 +5,12 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { MarketSnapshot } from "./components/MarketSnapshot";
+import { IdealTenantProfile } from "./components/IdealTenantProfile";
+import { AreaIntelligence } from "./components/AreaIntelligence";
+import { CompetitionOverview } from "./components/CompetitionOverview";
+import { BrokerOpportunities } from "./components/BrokerOpportunities";
+import { MarketingOpportunities } from "./components/MarketingOpportunities";
 
 type PropertyData = {
   unit_number: string;
@@ -292,6 +298,14 @@ function FindTenantsContent() {
             {buildingName} — Unit {property.unit_number}
           </p>
         </div>
+
+        {/* Market Intelligence */}
+        <MarketSnapshot />
+        <IdealTenantProfile />
+        <AreaIntelligence />
+        <CompetitionOverview />
+        <BrokerOpportunities />
+        <MarketingOpportunities />
 
         {/* Distribution Score */}
         <section className="flex flex-col gap-4">
