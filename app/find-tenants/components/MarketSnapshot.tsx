@@ -1,25 +1,13 @@
-type KPI = {
-  label: string;
-  value: string;
-  detail?: string;
-  highlight?: boolean;
+import type { MarketSnapshotModel } from "../build-rental-command-model";
+
+const COLOR_MAP = {
+  emerald: "text-emerald-500",
+  amber: "text-amber-500",
+  red: "text-red-400",
+  default: "text-zinc-900 dark:text-zinc-50",
 };
 
-const KPIS: KPI[] = [
-  { label: "Market Demand", value: "HIGH", detail: "Based on area search volume", highlight: true },
-  { label: "Competition", value: "37", detail: "Active listings nearby" },
-  { label: "Average Price", value: "87,500", detail: "AED / year" },
-  { label: "Your Price", value: "85,000", detail: "AED / year" },
-  { label: "Price Position", value: "Below Avg", detail: "2,500 AED under market", highlight: true },
-  { label: "Est. Days to Rent", value: "14", detail: "Based on similar units" },
-];
-
-const RECOMMENDATION = {
-  title: "Recommendation",
-  text: "Excellent pricing. Your unit is competitively positioned below the area average with strong amenities. High probability of fast tenant acquisition.",
-};
-
-export function MarketSnapshot() {
+export function MarketSnapshot({ data }: { data: MarketSnapshotModel }) {
   return (
     <section className="flex flex-col gap-4">
       <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
@@ -27,7 +15,7 @@ export function MarketSnapshot() {
       </h2>
 
       <div className="grid grid-cols-2 gap-3">
-        {KPIS.map((kpi) => (
+        {data.kpis.map((kpi) => (
           <div
             key={kpi.label}
             className="flex flex-col gap-1 rounded-xl border border-zinc-200 bg-white px-4 py-4 dark:border-zinc-700 dark:bg-zinc-900"
@@ -35,13 +23,7 @@ export function MarketSnapshot() {
             <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
               {kpi.label}
             </span>
-            <span
-              className={`text-xl font-bold tabular-nums ${
-                kpi.highlight
-                  ? "text-emerald-500"
-                  : "text-zinc-900 dark:text-zinc-50"
-              }`}
-            >
+            <span className={`text-xl font-bold tabular-nums ${COLOR_MAP[kpi.color]}`}>
               {kpi.value}
             </span>
             {kpi.detail && (
@@ -53,14 +35,16 @@ export function MarketSnapshot() {
         ))}
       </div>
 
-      <div className="rounded-xl border border-emerald-200/60 bg-emerald-50/50 px-5 py-4 dark:border-emerald-800/40 dark:bg-emerald-900/20">
-        <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-          {RECOMMENDATION.title}
-        </span>
-        <p className="mt-1.5 text-sm leading-relaxed text-emerald-800 dark:text-emerald-300">
-          {RECOMMENDATION.text}
-        </p>
-      </div>
+      {data.recommendation.text && (
+        <div className="rounded-xl border border-emerald-200/60 bg-emerald-50/50 px-5 py-4 dark:border-emerald-800/40 dark:bg-emerald-900/20">
+          <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+            {data.recommendation.title}
+          </span>
+          <p className="mt-1.5 text-sm leading-relaxed text-emerald-800 dark:text-emerald-300">
+            {data.recommendation.text}
+          </p>
+        </div>
+      )}
     </section>
   );
 }
